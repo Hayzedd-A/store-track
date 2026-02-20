@@ -1,0 +1,247 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Alert,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import { PointOfSale as POSIcon } from "@mui/icons-material";
+import PageHeader from "@/app/components/ui/PageHeader";
+import ProductSearch from "@/app/components/pos/ProductSearch";
+import ProductGrid from "@/app/components/pos/ProductGrid";
+import CartPanel from "@/app/components/pos/CartPanel";
+import CheckoutDialog from "@/app/components/pos/CheckoutDialog";
+import ReceiptDialog from "@/app/components/pos/ReceiptDialog";
+
+interface Product {
+  _id: string;
+  name: string;
+  sku: string;
+  price: number;
+  cost: number;
+  quantity: number;
+  minStock: number;
+  shelfNo?: string;
+  unitConfig: {
+    saleUnit: string;
+    restockUnit: string;
+    unitsPerRestock: number;
+  };
+  categoryId?: { _id: string; name: string; color: string } | null;
+}
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+  subtotal: number;
+}
+
+export default function POSPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const queryClient = useQueryClient();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [lastSale, setLastSale] = useState<{
+    saleId: string;
+    total: number;
+    items: CartItem[];
+  } | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => (await fetch("/api/products")).json(),
+  });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => (await fetch("/api/categories")).json(),
+  });
+
+  const createSaleMutation = useMutation({
+    mutationFn: async (items: CartItem[]) => {
+      const res = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            productId: item.product._id,
+            quantity: item.quantity,
+          })),
+          paymentMethod: "cash",
+        }),
+      });
+      if (!res.ok)
+        throw new Error(
+          (await res.json()).message || "Failed to complete sale",
+        );
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setLastSale({
+        saleId: data.data._id,
+        total: data.data.totalAmount,
+        items: cart,
+      });
+      setCart([]);
+      setCheckoutOpen(false);
+      setReceiptOpen(true);
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (err: Error) => setError(err.message),
+    onSettled: () => setProcessing(false),
+  });
+
+  const products: Product[] = productsData?.data || [];
+  const categories = categoriesData?.data || [];
+
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((p: Product) => {
+        const matchesSearch =
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.sku.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory =
+          !selectedCategory || p.categoryId?._id === selectedCategory;
+        return matchesSearch && matchesCategory;
+      }),
+    [products, searchQuery, selectedCategory],
+  );
+
+  const cartTotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const addToCart = (product: Product) => {
+    const existing = cart.find((i) => i.product._id === product._id);
+    if (existing) {
+      if (existing.quantity >= product.quantity) {
+        setError(
+          `Only ${product.quantity} ${product.unitConfig.saleUnit} available`,
+        );
+        return;
+      }
+      setCart(
+        cart.map((i) =>
+          i.product._id === product._id
+            ? {
+                ...i,
+                quantity: i.quantity + 1,
+                subtotal: (i.quantity + 1) * product.cost,
+              }
+            : i,
+        ),
+      );
+    } else {
+      if (product.quantity < 1) {
+        setError("Product is out of stock");
+        return;
+      }
+      setCart([...cart, { product, quantity: 1, subtotal: product.cost }]);
+    }
+    setError(null);
+  };
+
+  const updateCartQuantity = (productId: string, newQty: number) => {
+    if (newQty < 1) {
+      setCart(cart.filter((i) => i.product._id !== productId));
+      return;
+    }
+    const product = products.find((p: Product) => p._id === productId);
+    if (product && newQty > product.quantity) {
+      setError(`Only ${product.quantity} available`);
+      return;
+    }
+    setCart(
+      cart.map((i) =>
+        i.product._id === productId
+          ? { ...i, quantity: newQty, subtotal: newQty * i.product.cost }
+          : i,
+      ),
+    );
+    setError(null);
+  };
+
+  const handleCheckout = () => {
+    setProcessing(true);
+    setError(null);
+    createSaleMutation.mutate(cart);
+  };
+
+  return (
+    <Box>
+      <PageHeader icon={<POSIcon />} title="Point of Sale" />
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      <Grid container spacing={3}>
+        <Grid minWidth={350} flex={2} size={8}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ p: 2 }}>
+              <ProductSearch
+                searchQuery={searchQuery}
+                selectedCategory={selectedCategory}
+                categories={categories}
+                onSearchChange={setSearchQuery}
+                onCategoryChange={setSelectedCategory}
+              />
+              <ProductGrid
+                products={filteredProducts}
+                isLoading={productsLoading}
+                onAddToCart={addToCart}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid minWidth={250} flex={1} size={4}>
+          <Card sx={{ borderRadius: 3, position: "sticky", top: 80 }}>
+            <CardContent sx={{ p: 2 }}>
+              <CartPanel
+                cart={cart}
+                isMobile={isMobile}
+                onUpdateQuantity={updateCartQuantity}
+                onRemove={(id) =>
+                  setCart(cart.filter((i) => i.product._id !== id))
+                }
+                onClear={() => setCart([])}
+                onCheckout={() => setCheckoutOpen(true)}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <CheckoutDialog
+        open={checkoutOpen}
+        cartTotal={cartTotal}
+        itemCount={cartItemCount}
+        isProcessing={processing}
+        onClose={() => setCheckoutOpen(false)}
+        onConfirm={handleCheckout}
+      />
+
+      <ReceiptDialog
+        open={receiptOpen}
+        sale={lastSale}
+        onClose={() => setReceiptOpen(false)}
+      />
+    </Box>
+  );
+}
