@@ -1,27 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  Box,
-  TextField,
-  InputAdornment,
-  Chip,
-  Typography,
-  IconButton,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Button,
-  Fade,
-} from "@mui/material";
+import { useState } from "react";
+import { Box, TextField, InputAdornment, IconButton } from "@mui/material";
 import {
   Search as SearchIcon,
   QrCodeScanner as ScannerIcon,
   Close as CloseIcon,
-  CheckCircle as CheckCircleIcon,
-  CameraAlt as CameraIcon,
 } from "@mui/icons-material";
-import Quagga, { QuaggaJSResultCallbackFunction } from "@ericblade/quagga2";
+import CategoryChips from "./CategoryChips";
+import BarcodeScanner from "./BarcodeScanner";
 
 interface Category {
   _id: string;
@@ -35,11 +22,8 @@ interface ProductSearchProps {
   categories: Category[];
   onSearchChange: (value: string) => void;
   onCategoryChange: (categoryId: string | null) => void;
-  /** Called when a barcode is successfully scanned; parent handles add-to-cart */
   onBarcodeDetected?: (barcode: string) => void;
 }
-
-type ScanStatus = "idle" | "requesting" | "ready" | "scanning" | "found" | "error" | "denied" | "unsupported";
 
 export default function ProductSearch({
   searchQuery,
@@ -49,188 +33,22 @@ export default function ProductSearch({
   onCategoryChange,
   onBarcodeDetected,
 }: ProductSearchProps) {
-  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [lastBarcode, setLastBarcode] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const videoRef = useRef<HTMLDivElement>(null);
-  const quaggaStarted = useRef(false);
-  const detectedRef = useRef(false);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const stopScanner = useCallback(() => {
-    if (quaggaStarted.current) {
-      try {
-        Quagga.offDetected();
-        Quagga.stop();
-      } catch (_) {}
-      quaggaStarted.current = false;
-    }
-    // Also release the pre-permission stream if it exists
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-  }, []);
-
-  const startScanner = useCallback(async () => {
-    if (!videoRef.current || quaggaStarted.current) return;
-    detectedRef.current = false;
-    setErrorMessage(null);
-
-    // ── Step 1: check browser support ─────────────────────────────────────
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.mediaDevices ||
-      !navigator.mediaDevices.getUserMedia
-    ) {
-      setScanStatus("unsupported");
-      setErrorMessage(
-        "Camera API is not available. This usually means the page is served over HTTP (not HTTPS). " +
-          "Please use HTTPS or try a different browser."
-      );
-      return;
-    }
-
-    // ── Step 2: request permission explicitly so the browser shows the prompt
-    setScanStatus("requesting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
-      // Keep a reference so we can stop this track once Quagga takes over
-      streamRef.current = stream;
-    } catch (err: unknown) {
-      const domErr = err as DOMException;
-      console.error("Camera permission error:", domErr);
-      if (
-        domErr.name === "NotAllowedError" ||
-        domErr.name === "PermissionDeniedError"
-      ) {
-        setScanStatus("denied");
-        setErrorMessage(
-          "Camera access was denied. Please allow camera permission in your browser settings and try again."
-        );
-      } else if (
-        domErr.name === "NotFoundError" ||
-        domErr.name === "DevicesNotFoundError"
-      ) {
-        setScanStatus("error");
-        setErrorMessage("No camera was found on this device.");
-      } else if (domErr.name === "NotReadableError") {
-        setScanStatus("error");
-        setErrorMessage(
-          "Camera is already in use by another application. Close it and try again."
-        );
-      } else {
-        setScanStatus("error");
-        setErrorMessage(`Camera error: ${domErr.message || domErr.name}`);
-      }
-      return;
-    }
-
-    // ── Step 3: permission granted — hand off to Quagga ──────────────────
-    setScanStatus("ready");
-
-    Quagga.init(
-      {
-        inputStream: {
-          type: "LiveStream",
-          target: videoRef.current,
-          constraints: {
-            facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 },
-          },
-        },
-        decoder: {
-          readers: [
-            "ean_reader",
-            "ean_8_reader",
-            "code_128_reader",
-            "code_39_reader",
-            "upc_reader",
-            "upc_e_reader",
-          ],
-        },
-        locate: true,
-      },
-      (err: Error | null) => {
-        // Release the pre-permission stream — Quagga opens its own
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((t) => t.stop());
-          streamRef.current = null;
-        }
-        if (err) {
-          console.error("Quagga init error:", err);
-          setScanStatus("error");
-          setErrorMessage(
-            "Failed to initialise the barcode scanner. Please try closing and reopening the scanner."
-          );
-          quaggaStarted.current = false;
-          return;
-        }
-        Quagga.start();
-        quaggaStarted.current = true;
-        setScanStatus("scanning");
-      },
-    );
-
-    const handleDetected: QuaggaJSResultCallbackFunction = (result) => {
-      console.log("Barcode detected:", result);
-      if (detectedRef.current) return; // prevent duplicate fires
-      if (result?.codeResult?.code) {
-        const barcode = result.codeResult.code;
-        detectedRef.current = true;
-        setScanStatus("found");
-        setLastBarcode(barcode);
-        stopScanner();
-
-        if (onBarcodeDetected) {
-          onBarcodeDetected(barcode);
-        } else {
-          onSearchChange(barcode);
-        }
-
-        // Close dialog after brief success display
-        setTimeout(() => {
-          setScannerOpen(false);
-          setScanStatus("idle");
-          setLastBarcode(null);
-        }, 1400);
-      }
-    };
-
-    Quagga.onDetected(handleDetected);
-  }, [onBarcodeDetected, onSearchChange, stopScanner]);
-
-  // Start scanner when dialog opens, stop when it closes
-  useEffect(() => {
-    if (scannerOpen) {
-      // Small delay to let the dialog's DOM fully mount
-      const t = setTimeout(() => startScanner(), 250);
-      return () => clearTimeout(t);
-    } else {
-      stopScanner();
-      setScanStatus("idle");
-      setLastBarcode(null);
-      setErrorMessage(null);
-    }
-  }, [scannerOpen, startScanner, stopScanner]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => stopScanner();
-  }, [stopScanner]);
 
   const handleOpenScanner = () => {
-    detectedRef.current = false;
     setScannerOpen(true);
   };
 
   const handleCloseScanner = () => {
     setScannerOpen(false);
+  };
+
+  const handleBarcodeDetected = (barcode: string) => {
+    if (onBarcodeDetected) {
+      onBarcodeDetected(barcode);
+    } else {
+      onSearchChange(barcode);
+    }
   };
 
   return (
@@ -274,398 +92,19 @@ export default function ProductSearch({
       </Box>
 
       {/* Category chips */}
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
-        <Chip
-          label="All"
-          onClick={() => onCategoryChange(null)}
-          color={!selectedCategory ? "primary" : "default"}
-          sx={{ borderRadius: 2 }}
-        />
-        {categories.map((category) => (
-          <Chip
-            key={category._id}
-            label={category.name}
-            onClick={() => onCategoryChange(category._id)}
-            sx={{
-              borderRadius: 2,
-              backgroundColor:
-                selectedCategory === category._id ? category.color : undefined,
-              color: selectedCategory === category._id ? "white" : undefined,
-            }}
-          />
-        ))}
-      </Box>
+      <CategoryChips
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={onCategoryChange}
+      />
 
-      {/* Camera Scanner Dialog */}
-      <Dialog
+      {/* Barcode scanner dialog */}
+      <BarcodeScanner
         open={scannerOpen}
         onClose={handleCloseScanner}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            overflow: "hidden",
-            bgcolor: "#0a0a0a",
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            bgcolor: "#0a0a0a",
-            color: "white",
-            pb: 1,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <CameraIcon fontSize="small" />
-            <Typography variant="h6" fontWeight={600}>
-              Scan Barcode
-            </Typography>
-          </Box>
-          <IconButton onClick={handleCloseScanner} sx={{ color: "white" }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 0, bgcolor: "#0a0a0a", position: "relative" }}>
-          {/* Camera feed container */}
-          <Box
-            sx={{
-              position: "relative",
-              width: "100%",
-              aspectRatio: "4/3",
-              overflow: "hidden",
-              bgcolor: "#111",
-            }}
-          >
-            {/* Quagga injects the <video> here */}
-            <Box
-              ref={videoRef}
-              sx={{
-                width: "100%",
-                height: "100%",
-                "& video": {
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                },
-                "& canvas": {
-                  display: "none",
-                },
-              }}
-            />
-
-            {/* Dark overlay with cutout — achieved via 4 panels */}
-            {scanStatus !== "found" && (
-              <>
-                {/* Top overlay */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "25%",
-                    bgcolor: "rgba(0,0,0,0.55)",
-                  }}
-                />
-                {/* Bottom overlay */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: "25%",
-                    bgcolor: "rgba(0,0,0,0.55)",
-                  }}
-                />
-                {/* Left overlay */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "25%",
-                    left: 0,
-                    width: "10%",
-                    bottom: "25%",
-                    bgcolor: "rgba(0,0,0,0.55)",
-                  }}
-                />
-                {/* Right overlay */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "25%",
-                    right: 0,
-                    width: "10%",
-                    bottom: "25%",
-                    bgcolor: "rgba(0,0,0,0.55)",
-                  }}
-                />
-
-                {/* Viewfinder frame */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "25%",
-                    left: "10%",
-                    right: "10%",
-                    bottom: "25%",
-                    border: "2px solid",
-                    borderColor:
-                      scanStatus === "scanning"
-                        ? "primary.main"
-                        : "rgba(255,255,255,0.4)",
-                    borderRadius: 1,
-                    transition: "border-color 0.3s",
-                  }}
-                >
-                  {/* Corner accents */}
-                  {[
-                    {
-                      top: -2,
-                      left: -2,
-                      borderTop: "3px solid",
-                      borderLeft: "3px solid",
-                      borderTopLeftRadius: 4,
-                    },
-                    {
-                      top: -2,
-                      right: -2,
-                      borderTop: "3px solid",
-                      borderRight: "3px solid",
-                      borderTopRightRadius: 4,
-                    },
-                    {
-                      bottom: -2,
-                      left: -2,
-                      borderBottom: "3px solid",
-                      borderLeft: "3px solid",
-                      borderBottomLeftRadius: 4,
-                    },
-                    {
-                      bottom: -2,
-                      right: -2,
-                      borderBottom: "3px solid",
-                      borderRight: "3px solid",
-                      borderBottomRightRadius: 4,
-                    },
-                  ].map((style, i) => (
-                    <Box
-                      key={i}
-                      sx={{
-                        position: "absolute",
-                        width: 24,
-                        height: 24,
-                        borderColor: "primary.main",
-                        ...style,
-                      }}
-                    />
-                  ))}
-
-                  {/* Scanning laser line animation */}
-                  {scanStatus === "scanning" && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        left: 4,
-                        right: 4,
-                        height: "2px",
-                        background:
-                          "linear-gradient(90deg, transparent, #1976d2, #42a5f5, #1976d2, transparent)",
-                        boxShadow: "0 0 8px 2px rgba(66,165,245,0.7)",
-                        animation: "scanLine 1.8s ease-in-out infinite",
-                        "@keyframes scanLine": {
-                          "0%": { top: "5%" },
-                          "50%": { top: "90%" },
-                          "100%": { top: "5%" },
-                        },
-                      }}
-                    />
-                  )}
-                </Box>
-              </>
-            )}
-
-            {/* Success overlay */}
-            <Fade in={scanStatus === "found"}>
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  bgcolor: "rgba(46, 125, 50, 0.85)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 1.5,
-                }}
-              >
-                <CheckCircleIcon sx={{ fontSize: 64, color: "white" }} />
-                <Typography
-                  variant="h6"
-                  color="white"
-                  fontWeight={700}
-                  textAlign="center"
-                >
-                  Barcode Detected!
-                </Typography>
-                {lastBarcode && (
-                  <Typography
-                    variant="body2"
-                    color="rgba(255,255,255,0.85)"
-                    sx={{ fontFamily: "monospace", fontSize: "1rem" }}
-                  >
-                    {lastBarcode}
-                  </Typography>
-                )}
-                <Typography variant="caption" color="rgba(255,255,255,0.7)">
-                  Adding to cart...
-                </Typography>
-              </Box>
-            </Fade>
-
-            {/* Status pill at bottom of camera area — only when actively scanning/ready */}
-            {(scanStatus === "ready" || scanStatus === "scanning" || scanStatus === "requesting") && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  bottom: 16,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  px: 2,
-                  py: 0.75,
-                  borderRadius: 5,
-                  bgcolor: "rgba(0,0,0,0.65)",
-                  backdropFilter: "blur(4px)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {(scanStatus === "scanning" || scanStatus === "requesting") && (
-                  <Box
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      bgcolor: scanStatus === "requesting" ? "#ffa726" : "#42a5f5",
-                      animation: "pulse 1s ease-in-out infinite",
-                      "@keyframes pulse": {
-                        "0%, 100%": { opacity: 1, transform: "scale(1)" },
-                        "50%": { opacity: 0.5, transform: "scale(0.7)" },
-                      },
-                    }}
-                  />
-                )}
-                <Typography variant="caption" color="white" fontWeight={500}>
-                  {scanStatus === "requesting"
-                    ? "Waiting for camera permission..."
-                    : scanStatus === "ready"
-                      ? "Starting camera..."
-                      : "Align barcode within frame"}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Error / Denied / Unsupported overlay */}
-            {(scanStatus === "error" || scanStatus === "denied" || scanStatus === "unsupported") && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  bgcolor: "rgba(0,0,0,0.82)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 2,
-                  px: 3,
-                  textAlign: "center",
-                }}
-              >
-                <Box sx={{ fontSize: 48 }}>
-                  {scanStatus === "denied" ? "🚫" : scanStatus === "unsupported" ? "📵" : "⚠️"}
-                </Box>
-                <Typography variant="subtitle1" color="white" fontWeight={700}>
-                  {scanStatus === "denied"
-                    ? "Camera Access Denied"
-                    : scanStatus === "unsupported"
-                      ? "Camera Not Supported"
-                      : "Camera Error"}
-                </Typography>
-                <Typography variant="body2" color="rgba(255,255,255,0.75)" sx={{ lineHeight: 1.6 }}>
-                  {errorMessage}
-                </Typography>
-                {scanStatus === "denied" && (
-                  <Typography variant="caption" color="rgba(255,255,255,0.5)">
-                    Tip: Look for a camera icon in your browser's address bar and allow access.
-                  </Typography>
-                )}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {
-                    setScanStatus("idle");
-                    setErrorMessage(null);
-                    setTimeout(() => startScanner(), 100);
-                  }}
-                  sx={{
-                    color: "white",
-                    borderColor: "rgba(255,255,255,0.4)",
-                    mt: 1,
-                    "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,0.1)" },
-                  }}
-                >
-                  Try Again
-                </Button>
-              </Box>
-            )}
-          </Box>
-
-          {/* Instruction text below camera */}
-          <Box
-            sx={{
-              px: 3,
-              py: 2,
-              display: "flex",
-              flexDirection: "column",
-              gap: 1,
-              bgcolor: "#141414",
-            }}
-          >
-            <Typography
-              variant="body2"
-              color="rgba(255,255,255,0.7)"
-              textAlign="center"
-            >
-              Hold the barcode steady within the highlighted frame. The item
-              will be added to your cart automatically.
-            </Typography>
-            <Button
-              variant="outlined"
-              onClick={handleCloseScanner}
-              sx={{
-                color: "rgba(255,255,255,0.6)",
-                borderColor: "rgba(255,255,255,0.2)",
-                borderRadius: 2,
-                "&:hover": {
-                  borderColor: "rgba(255,255,255,0.5)",
-                  bgcolor: "rgba(255,255,255,0.05)",
-                },
-              }}
-            >
-              Cancel
-            </Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
+        onBarcodeDetected={handleBarcodeDetected}
+        onError={(error) => console.error("Scanner error:", error)}
+      />
     </>
   );
 }

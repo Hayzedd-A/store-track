@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Dialog,
   DialogTitle,
@@ -20,8 +22,9 @@ import {
   Paper,
   Box,
 } from "@mui/material";
-import { AutoAwesome as AutoAwesomeIcon } from "@mui/icons-material";
+import { AutoAwesome as AutoAwesomeIcon, QrCodeScanner as ScannerIcon } from "@mui/icons-material";
 import ImageUpload from "@/app/components/ui/ImageUpload";
+import BarcodeScanner from "@/app/components/pos/BarcodeScanner";
 
 interface Category {
   _id: string;
@@ -74,6 +77,8 @@ export default function AddProductDialog({
   onClose,
   onSubmit,
 }: AddProductDialogProps) {
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   const handleGenerateSku = async () => {
     try {
       const res = await fetch("/api/products/generate-sku", {
@@ -169,6 +174,21 @@ export default function AddProductDialog({
               value={form.barcode}
               onChange={(e) => onChange("barcode", e.target.value)}
               placeholder="Scan or enter barcode"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Scan Barcode">
+                      <IconButton
+                        onClick={() => setScannerOpen(true)}
+                        edge="end"
+                        size="small"
+                      >
+                        <ScannerIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid>
 
@@ -337,6 +357,14 @@ export default function AddProductDialog({
           {isLoading ? "Adding..." : "Add Product"}
         </Button>
       </DialogActions>
+
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onBarcodeDetected={(barcode) => {
+          onChange("barcode", barcode);
+        }}
+      />
     </Dialog>
   );
 }
