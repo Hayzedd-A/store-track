@@ -33,7 +33,6 @@ export default function CartPanel({
   cart,
   isMobile,
   onUpdateQuantity,
-  onRemove,
   onClear,
   onCheckout,
 }: CartPanelProps) {

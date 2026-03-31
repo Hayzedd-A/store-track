@@ -29,8 +29,6 @@ import {
   TableRow,
   Paper,
   Tooltip,
-  Alert,
-  Snackbar,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -45,7 +43,6 @@ import {
   getStockStatus,
   getStockStatusColor,
 } from "@/lib/utils";
-import ImageUpload from "../components/ui/ImageUpload";
 import EditProductDialog from "../components/inventory/EditProductDialog";
 import SnackbarAlert from "../components/ui/SnackbarAlert";
 import RestockDialog from "../components/inventory/RestockDialog";

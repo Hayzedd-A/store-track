@@ -10,7 +10,6 @@ import {
   Typography,
   TextField,
 } from "@mui/material";
-import { CloudUpload as CloudUploadIcon } from "@mui/icons-material";
 import ImageUpload from "@/app/components/ui/ImageUpload";
 
 const COLORS = [

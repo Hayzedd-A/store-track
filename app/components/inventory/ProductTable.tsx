@@ -11,7 +11,6 @@ import {
   Paper,
   Typography,
   Chip,
-  Box,
   IconButton,
   Tooltip,
 } from "@mui/material";

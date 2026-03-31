@@ -23,14 +23,14 @@ import {
   DialogActions,
   Chip,
   IconButton,
-  InputAdornment,
+  // InputAdornment,
   Divider,
 } from "@mui/material";
 import {
   Receipt as ReceiptIcon,
   Download as DownloadIcon,
   Visibility as ViewIcon,
-  DateRange as DateRangeIcon,
+  // DateRange as DateRangeIcon,
   TrendingUp as TrendingUpIcon,
   AttachMoney as MoneyIcon,
 } from "@mui/icons-material";
@@ -49,35 +49,6 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ISale } from "@/types";
 
-// interface ISale {
-//   _id: string;
-//   totalAmount: number;
-//   paymentMethod: string;
-//   status: string;
-//   items: Array<{
-//     productName: string;
-//     quantity: number;
-//     price: number;
-//     cost: number;
-//     subtotal: number;
-//   }>;
-//   createdAt: string;
-// }
-
-interface SalesData {
-  data: ISale[];
-  summary: {
-    totalSales: number;
-    totalRevenue: number;
-  };
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
 export default function SalesPage() {
   const [dateRange, setDateRange] = useState({
     startDate: "",
@@ -90,7 +61,7 @@ export default function SalesPage() {
   const {
     data: salesData,
     isLoading,
-    refetch,
+    // refetch,
   } = useQuery({
     queryKey: ["sales", dateRange],
     queryFn: async () => {
