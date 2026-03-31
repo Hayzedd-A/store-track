@@ -21,7 +21,7 @@ export default function DateFilter({
     <Card sx={{ borderRadius: 3, mb: 3 }}>
       <CardContent sx={{ p: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+          <Grid>
             <TextField
               fullWidth
               type="date"
@@ -32,7 +32,7 @@ export default function DateFilter({
               size="small"
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid>
             <TextField
               fullWidth
               type="date"
@@ -43,7 +43,7 @@ export default function DateFilter({
               size="small"
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid>
             <Button fullWidth variant="outlined" onClick={onClear}>
               Clear Filter
             </Button>

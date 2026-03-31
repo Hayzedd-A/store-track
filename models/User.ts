@@ -40,7 +40,7 @@ const UserSchema = new Schema<IUserDocument>(
  */
 UserSchema.methods.hashPassword = async function (password: string): Promise<string> {
   const iterations = 100000;
-  const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+  const saltBytes = crypto.getRandomValues(new Uint8Array(16) as Uint8Array<ArrayBuffer>);
 
   const toBase64 = (b: Uint8Array) => {
     let s = '';
@@ -48,7 +48,7 @@ UserSchema.methods.hashPassword = async function (password: string): Promise<str
     return btoa(s);
   };
 
-  const derive = async (password: string, salt: Uint8Array, iter: number) => {
+  const derive = async (password: string, salt: Uint8Array<ArrayBuffer>, iter: number) => {
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
       'raw', 
@@ -62,7 +62,7 @@ UserSchema.methods.hashPassword = async function (password: string): Promise<str
       key, 
       256
     );
-    return new Uint8Array(derived);
+    return new Uint8Array(derived) as Uint8Array<ArrayBuffer>;
   };
 
   const hashBytes = await derive(password, saltBytes, iterations);
@@ -83,9 +83,9 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
     if (!algo.startsWith('pbkdf2_sha256')) return false;
     const iterations = parseInt(iterationsStr, 10);
 
-    const fromBase64 = (b64: string) => {
+    const fromBase64 = (b64: string): Uint8Array<ArrayBuffer> => {
       const str = atob(b64);
-      const u = new Uint8Array(str.length);
+      const u = new Uint8Array(str.length) as Uint8Array<ArrayBuffer>;
       for (let i = 0; i < str.length; i++) u[i] = str.charCodeAt(i);
       return u;
     };
@@ -105,6 +105,7 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
     for (let i = 0; i < derivedBytes.length; i++) diff |= derivedBytes[i] ^ expected[i];
     return diff === 0;
   } catch (err) {
+    console.error('Password comparison error:', err);
     return false;
   }
 };

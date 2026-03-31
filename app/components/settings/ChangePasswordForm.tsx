@@ -43,7 +43,7 @@ export default function ChangePasswordForm({
           </Typography>
         </Box>
         <Grid container spacing={2}>
-          <Grid item xs={12}>
+          <Grid>
             <TextField
               fullWidth
               label="Current Password"
@@ -52,7 +52,7 @@ export default function ChangePasswordForm({
               onChange={(e) => onChange("currentPassword", e.target.value)}
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid>
             <TextField
               fullWidth
               label="New Password"
@@ -61,7 +61,7 @@ export default function ChangePasswordForm({
               onChange={(e) => onChange("newPassword", e.target.value)}
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid>
             <TextField
               fullWidth
               label="Confirm New Password"

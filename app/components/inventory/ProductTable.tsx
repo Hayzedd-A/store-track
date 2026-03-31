@@ -123,7 +123,7 @@ export default function ProductTable({
                         label={status.replace("-", " ")}
                         size="small"
                         sx={{
-                          ...getStockStatusColor(status),
+                          color: getStockStatusColor(status),
                           textTransform: "capitalize",
                         }}
                       />

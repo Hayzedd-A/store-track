@@ -36,7 +36,7 @@ export default function ProductFilters({
     <Card sx={{ borderRadius: 3, mb: 3 }}>
       <CardContent sx={{ p: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid xs={12} md={6}>
+          <Grid>
             <TextField
               fullWidth
               placeholder="Search products..."
@@ -52,7 +52,7 @@ export default function ProductFilters({
               size="small"
             />
           </Grid>
-          <Grid xs={12} md={3}>
+          <Grid>
             <FormControl fullWidth size="small">
               <InputLabel>Stock Status</InputLabel>
               <Select
@@ -65,7 +65,7 @@ export default function ProductFilters({
               </Select>
             </FormControl>
           </Grid>
-          <Grid xs={12} md={3}>
+          <Grid>
             <Button
               fullWidth
               variant="outlined"

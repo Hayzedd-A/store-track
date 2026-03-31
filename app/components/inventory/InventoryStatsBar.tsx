@@ -22,7 +22,7 @@ export default function InventoryStatsBar({
 
   return (
     <Grid container spacing={2} sx={{ mb: 3 }}>
-      <Grid xs={12} sm={4}>
+      <Grid>
         <Card sx={{ borderRadius: 3 }}>
           <CardContent>
             <Typography variant="body2" color="text.secondary">
@@ -34,7 +34,7 @@ export default function InventoryStatsBar({
           </CardContent>
         </Card>
       </Grid>
-      <Grid xs={12} sm={4}>
+      <Grid>
         <Card
           sx={{
             borderRadius: 3,
@@ -57,7 +57,7 @@ export default function InventoryStatsBar({
           </CardContent>
         </Card>
       </Grid>
-      <Grid xs={12} sm={4}>
+      <Grid>
         <Card sx={{ borderRadius: 3 }}>
           <CardContent>
             <Typography variant="body2" color="text.secondary">

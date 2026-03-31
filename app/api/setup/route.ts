@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, errors: error.errors },
+        { success: false, errors: error.issues },
         { status: 400 }
       );
     }

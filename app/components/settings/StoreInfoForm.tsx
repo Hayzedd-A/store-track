@@ -39,7 +39,7 @@ export default function StoreInfoForm({
           </Typography>
         </Box>
         <Grid container spacing={2}>
-          <Grid item xs={12}>
+          <Grid>
             <TextField
               fullWidth
               label="Store Name"
@@ -47,7 +47,7 @@ export default function StoreInfoForm({
               onChange={(e) => onChange("storeName", e.target.value)}
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid>
             <TextField
               fullWidth
               label="Address"
@@ -57,7 +57,7 @@ export default function StoreInfoForm({
               rows={2}
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid>
             <TextField
               fullWidth
               label="Phone Number"
@@ -65,7 +65,7 @@ export default function StoreInfoForm({
               onChange={(e) => onChange("phone", e.target.value)}
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid>
             <TextField
               fullWidth
               label="Email"

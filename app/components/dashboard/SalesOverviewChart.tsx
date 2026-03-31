@@ -33,10 +33,14 @@ export default function SalesOverviewChart({ data }: SalesOverviewChartProps) {
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
             <Tooltip
-              formatter={(value: number, name: string) => [
-                name === "sales" ? value : formatCurrency(value),
-                name === "sales" ? "Sales Count" : "Revenue",
-              ]}
+              formatter={(value, name) => {
+                const safeValue = Number(value || 0);
+
+                return [
+                  name === "sales" ? safeValue : formatCurrency(safeValue),
+                  name === "sales" ? "Sales Count" : "Revenue",
+                ];
+              }}
             />
             <Line
               yAxisId="left"

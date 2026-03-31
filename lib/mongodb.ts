@@ -27,6 +27,9 @@ export async function connectToDatabase() {
     const opts = {
       bufferCommands: false,
     };
+    if (!MONGODB_URI) {
+      throw new Error('Please provide a MongoDB URI');
+    }
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       return mongoose;

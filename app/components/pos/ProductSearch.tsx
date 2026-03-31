@@ -39,7 +39,7 @@ interface ProductSearchProps {
   onBarcodeDetected?: (barcode: string) => void;
 }
 
-type ScanStatus = "idle" | "ready" | "scanning" | "found" | "error";
+type ScanStatus = "idle" | "requesting" | "ready" | "scanning" | "found" | "error" | "denied" | "unsupported";
 
 export default function ProductSearch({
   searchQuery,
@@ -52,9 +52,11 @@ export default function ProductSearch({
   const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const quaggaStarted = useRef(false);
   const detectedRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const stopScanner = useCallback(() => {
     if (quaggaStarted.current) {
@@ -64,11 +66,71 @@ export default function ProductSearch({
       } catch (_) {}
       quaggaStarted.current = false;
     }
+    // Also release the pre-permission stream if it exists
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
   }, []);
 
-  const startScanner = useCallback(() => {
+  const startScanner = useCallback(async () => {
     if (!videoRef.current || quaggaStarted.current) return;
     detectedRef.current = false;
+    setErrorMessage(null);
+
+    // ── Step 1: check browser support ─────────────────────────────────────
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+      setScanStatus("unsupported");
+      setErrorMessage(
+        "Camera API is not available. This usually means the page is served over HTTP (not HTTPS). " +
+          "Please use HTTPS or try a different browser."
+      );
+      return;
+    }
+
+    // ── Step 2: request permission explicitly so the browser shows the prompt
+    setScanStatus("requesting");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      // Keep a reference so we can stop this track once Quagga takes over
+      streamRef.current = stream;
+    } catch (err: unknown) {
+      const domErr = err as DOMException;
+      console.error("Camera permission error:", domErr);
+      if (
+        domErr.name === "NotAllowedError" ||
+        domErr.name === "PermissionDeniedError"
+      ) {
+        setScanStatus("denied");
+        setErrorMessage(
+          "Camera access was denied. Please allow camera permission in your browser settings and try again."
+        );
+      } else if (
+        domErr.name === "NotFoundError" ||
+        domErr.name === "DevicesNotFoundError"
+      ) {
+        setScanStatus("error");
+        setErrorMessage("No camera was found on this device.");
+      } else if (domErr.name === "NotReadableError") {
+        setScanStatus("error");
+        setErrorMessage(
+          "Camera is already in use by another application. Close it and try again."
+        );
+      } else {
+        setScanStatus("error");
+        setErrorMessage(`Camera error: ${domErr.message || domErr.name}`);
+      }
+      return;
+    }
+
+    // ── Step 3: permission granted — hand off to Quagga ──────────────────
     setScanStatus("ready");
 
     Quagga.init(
@@ -95,9 +157,17 @@ export default function ProductSearch({
         locate: true,
       },
       (err: Error | null) => {
+        // Release the pre-permission stream — Quagga opens its own
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+        }
         if (err) {
           console.error("Quagga init error:", err);
           setScanStatus("error");
+          setErrorMessage(
+            "Failed to initialise the barcode scanner. Please try closing and reopening the scanner."
+          );
           quaggaStarted.current = false;
           return;
         }
@@ -138,13 +208,14 @@ export default function ProductSearch({
   // Start scanner when dialog opens, stop when it closes
   useEffect(() => {
     if (scannerOpen) {
-      // Small delay to let the DOM mount
-      const t = setTimeout(() => startScanner(), 200);
+      // Small delay to let the dialog's DOM fully mount
+      const t = setTimeout(() => startScanner(), 250);
       return () => clearTimeout(t);
     } else {
       stopScanner();
       setScanStatus("idle");
       setLastBarcode(null);
+      setErrorMessage(null);
     }
   }, [scannerOpen, startScanner, stopScanner]);
 
@@ -459,8 +530,8 @@ export default function ProductSearch({
               </Box>
             </Fade>
 
-            {/* Status chip at bottom of camera area */}
-            {scanStatus !== "found" && (
+            {/* Status pill at bottom of camera area — only when actively scanning/ready */}
+            {(scanStatus === "ready" || scanStatus === "scanning" || scanStatus === "requesting") && (
               <Box
                 sx={{
                   position: "absolute",
@@ -478,13 +549,13 @@ export default function ProductSearch({
                   whiteSpace: "nowrap",
                 }}
               >
-                {scanStatus === "scanning" && (
+                {(scanStatus === "scanning" || scanStatus === "requesting") && (
                   <Box
                     sx={{
                       width: 8,
                       height: 8,
                       borderRadius: "50%",
-                      bgcolor: "#42a5f5",
+                      bgcolor: scanStatus === "requesting" ? "#ffa726" : "#42a5f5",
                       animation: "pulse 1s ease-in-out infinite",
                       "@keyframes pulse": {
                         "0%, 100%": { opacity: 1, transform: "scale(1)" },
@@ -494,14 +565,66 @@ export default function ProductSearch({
                   />
                 )}
                 <Typography variant="caption" color="white" fontWeight={500}>
-                  {scanStatus === "ready"
-                    ? "Starting camera..."
-                    : scanStatus === "scanning"
-                      ? "Align barcode within frame"
-                      : scanStatus === "error"
-                        ? "Camera unavailable"
-                        : ""}
+                  {scanStatus === "requesting"
+                    ? "Waiting for camera permission..."
+                    : scanStatus === "ready"
+                      ? "Starting camera..."
+                      : "Align barcode within frame"}
                 </Typography>
+              </Box>
+            )}
+
+            {/* Error / Denied / Unsupported overlay */}
+            {(scanStatus === "error" || scanStatus === "denied" || scanStatus === "unsupported") && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  bgcolor: "rgba(0,0,0,0.82)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2,
+                  px: 3,
+                  textAlign: "center",
+                }}
+              >
+                <Box sx={{ fontSize: 48 }}>
+                  {scanStatus === "denied" ? "🚫" : scanStatus === "unsupported" ? "📵" : "⚠️"}
+                </Box>
+                <Typography variant="subtitle1" color="white" fontWeight={700}>
+                  {scanStatus === "denied"
+                    ? "Camera Access Denied"
+                    : scanStatus === "unsupported"
+                      ? "Camera Not Supported"
+                      : "Camera Error"}
+                </Typography>
+                <Typography variant="body2" color="rgba(255,255,255,0.75)" sx={{ lineHeight: 1.6 }}>
+                  {errorMessage}
+                </Typography>
+                {scanStatus === "denied" && (
+                  <Typography variant="caption" color="rgba(255,255,255,0.5)">
+                    Tip: Look for a camera icon in your browser's address bar and allow access.
+                  </Typography>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setScanStatus("idle");
+                    setErrorMessage(null);
+                    setTimeout(() => startScanner(), 100);
+                  }}
+                  sx={{
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.4)",
+                    mt: 1,
+                    "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,0.1)" },
+                  }}
+                >
+                  Try Again
+                </Button>
               </Box>
             )}
           </Box>

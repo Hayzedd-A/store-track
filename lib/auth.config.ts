@@ -8,7 +8,7 @@ export const authConfig = {
     // This is the middleware-friendly way to handle redirects
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
+      // const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
       const isOnLogin = nextUrl.pathname === '/login';
 
       if (isLoggedIn && isOnLogin) {

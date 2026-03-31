@@ -455,10 +455,16 @@ export default function SalesPage() {
                 <XAxis dataKey="date" />
                 <YAxis tickFormatter={formalizeCurrency} />
                 <Tooltip
-                  formatter={(value: number, name: string) => [
-                    name === "revenue" ? formatCurrency(value) : value,
-                    name === "revenue" ? "Revenue" : "Sales",
-                  ]}
+                  formatter={(value, name) => {
+                    const safeValue = Number(value ?? 0);
+
+                    return [
+                      name === "revenue"
+                        ? formatCurrency(safeValue)
+                        : safeValue,
+                      name === "revenue" ? "Revenue" : "Sales",
+                    ];
+                  }}
                 />
                 <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -487,7 +493,7 @@ export default function SalesPage() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
           </Card>

@@ -61,7 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } catch (error) {
           console.error('Auth error:', error);
           if (error instanceof z.ZodError) {
-            throw new Error(error.errors[0].message);
+            throw new Error(error.issues[0].message);
           }
           throw new Error('Invalid email or password');
         }
