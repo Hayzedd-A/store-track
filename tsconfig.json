@@ -22,8 +22,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@zxing/library": ["./node_modules/@zxing/library/esm/index.d.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": [
