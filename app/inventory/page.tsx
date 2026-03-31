@@ -138,7 +138,6 @@ export default function InventoryPage() {
     cost: "",
     notes: "",
   });
-  const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editForm, setEditForm] = useState<FormProduct>({
     ...formDefault,
     currentImage: null as string | null, // Existing image URL
