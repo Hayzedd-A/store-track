@@ -39,7 +39,7 @@ import {
   getStockStatus,
   getStockStatusColor,
 } from "@/lib/utils";
-import EditProductDialog from "../components/inventory/EditProductDialog";
+// import EditProductDialog from "../components/inventory/EditProductDialog";
 import SnackbarAlert from "../components/ui/SnackbarAlert";
 import RestockDialog from "../components/inventory/RestockDialog";
 import AddProductDialog from "../components/inventory/AddProductDialog";
@@ -307,13 +307,13 @@ export default function InventoryPage() {
     }));
   };
 
-  const handleEditImageRemove = () => {
-    setEditForm((prev) => ({
-      ...prev,
-      newImageFile: null,
-      imageRemoved: true, // Mark existing image for removal
-    }));
-  };
+  // const handleEditImageRemove = () => {
+  //   setEditForm((prev) => ({
+  //     ...prev,
+  //     newImageFile: null,
+  //     imageRemoved: true, // Mark existing image for removal
+  //   }));
+  // };
 
   // const handleAddProduct = () => {
   //   if (!addForm.name || !addForm.sku || !addForm.price || !addForm.cost) {
