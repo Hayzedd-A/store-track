@@ -53,7 +53,7 @@ export default function SalesSummaryCards({
   return (
     <Grid container spacing={3} sx={{ mb: 3 }}>
       {cards.map((card) => (
-        <Grid item xs={12} sm={6} md={3} key={card.title}>
+        <Grid key={card.title}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center" }}>

@@ -12,7 +12,7 @@ export interface ICategory {
   _id?: string;
   name: string;
   color: string;
-  image?: string;
+  image?: string | null;
   createdAt?: Date;
 }
 
@@ -33,8 +33,8 @@ export interface IProduct {
   price: number;
   cost: number;
   quantity: number;
-  image?: string;
-  publicId?: string; // Add publicId property
+  image: string | null;
+  publicId: string | null; // Add publicId property
   minStock: number;
   shelfNo?: string;
   unitConfig: IUnitConfig;
@@ -72,7 +72,7 @@ export interface IStockHistory {
   quantityChange: number;
   previousQty: number;
   newQty: number;
-  currentPrice?: Number;
+  currentPrice?: number;
   notes?: string;
   createdAt?: Date;
 }

@@ -159,13 +159,13 @@ export default function DashboardPage() {
       <SalesOverviewChart data={chartData} />
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid>
           <RecentSalesList
             isLoading={isLoading}
             sales={stats?.recentSales || []}
           />
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid>
           <LowStockAlerts
             isLoading={isLoading}
             items={stats?.lowStockItems || []}

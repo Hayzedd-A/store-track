@@ -93,8 +93,7 @@ export interface FormProduct {
   currentImage?: string | null;
   currentPublicId?: string | null;
   newImageFile?: File | null;
-  imageRemoved?: boolean;  imageRemoved?: boolean;
-
+  imageRemoved?: boolean;
 }
 
 interface Category {
