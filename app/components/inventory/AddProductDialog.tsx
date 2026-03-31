@@ -22,7 +22,10 @@ import {
   Paper,
   Box,
 } from "@mui/material";
-import { AutoAwesome as AutoAwesomeIcon, QrCodeScanner as ScannerIcon } from "@mui/icons-material";
+import {
+  AutoAwesome as AutoAwesomeIcon,
+  QrCodeScanner as ScannerIcon,
+} from "@mui/icons-material";
 import ImageUpload from "@/app/components/ui/ImageUpload";
 import BarcodeScanner from "@/app/components/pos/BarcodeScanner";
 
@@ -64,9 +67,11 @@ interface AddProductDialogProps {
   onImageChange: (file: File) => void;
   onClose: () => void;
   onSubmit: () => void;
+  mode: "add" | "edit";
 }
 
 export default function AddProductDialog({
+  mode,
   open,
   form,
   imagePreview,
@@ -117,7 +122,7 @@ export default function AddProductDialog({
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ pb: 1 }}>
         <Typography variant="h6" component="span">
-          Add New Product
+          {mode === "add" ? "Add New Product" : "Edit Product"}
         </Typography>
       </DialogTitle>
 
@@ -354,7 +359,11 @@ export default function AddProductDialog({
           disabled={isLoading}
           sx={{ minWidth: 120 }}
         >
-          {isLoading ? "Adding..." : "Add Product"}
+          {isLoading
+            ? "Adding..."
+            : mode === "add"
+              ? "Add Product"
+              : "Update Product"}
         </Button>
       </DialogActions>
 

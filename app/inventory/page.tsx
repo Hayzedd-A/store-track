@@ -101,6 +101,7 @@ export default function InventoryPage() {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openRestockDialog, setOpenRestockDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [addEditMode, setAddEditMode] = useState<"add" | "edit">("add");
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -279,7 +280,7 @@ export default function InventoryPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      setOpenEditDialog(false);
+      setOpenAddDialog(false);
       setSnackbar({
         open: true,
         message: "Product updated successfully!",
@@ -302,7 +303,7 @@ export default function InventoryPage() {
     setEditForm((prev) => ({
       ...prev,
       newImageFile: file,
-      imageRemoved: false, // If a new image is selected, it's not removed
+      imageRemoved: true, // If a new image is selected, it's not removed
     }));
   };
 
@@ -370,7 +371,9 @@ export default function InventoryPage() {
       newImageFile: null, // Reset new image file
       imageRemoved: false, // Reset image removed flag
     });
-    setOpenEditDialog(true);
+    setOpenAddDialog(true);
+    setAddEditMode("edit");
+    setImagePreview(product.image || null);
   };
 
   const handleUpdateProduct = async () => {
@@ -439,7 +442,11 @@ export default function InventoryPage() {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setOpenAddDialog(true)}
+          onClick={() => {
+            setAddEditMode("add");
+            setOpenAddDialog(true);
+            setImagePreview(null);
+          }}
           sx={{ backgroundColor: "#1E40AF" }}
         >
           Add Product
@@ -698,27 +705,49 @@ export default function InventoryPage() {
 
       {/* Add Product Dialog */}
       <AddProductDialog
+        mode={addEditMode}
         open={openAddDialog}
-        form={addForm}
+        form={addEditMode === "add" ? addForm : editForm}
         imagePreview={imagePreview}
         categories={categories || []}
-        isLoading={createProductMutation.isPending}
+        isLoading={
+          createProductMutation.isPending || updateProductMutation.isPending
+        }
         onChange={(field, value) => {
-          setAddForm((prev) => ({
-            ...prev,
-            [field]: value,
-          }));
+          if (addEditMode === "add") {
+            setAddForm((prev) => ({
+              ...prev,
+              [field]: value,
+            }));
+          } else {
+            setEditForm((prev) => ({
+              ...prev,
+              [field]: value,
+            }));
+          }
         }}
         onImageChange={(file) => {
-          setAddForm((prev) => ({ ...prev, image: file }));
-          setImagePreview(URL.createObjectURL(file));
+          if (addEditMode === "add") {
+            setAddForm((prev) => ({ ...prev, image: file }));
+            setImagePreview(URL.createObjectURL(file));
+          } else {
+            handleEditImageChange(file);
+            setEditForm((prev) => ({ ...prev, image: file }));
+            setImagePreview(URL.createObjectURL(file));
+          }
         }}
         onClose={() => setOpenAddDialog(false)}
-        onSubmit={() => createProductMutation.mutate(addForm)}
+        onSubmit={() => {
+          if (addEditMode === "add") {
+            createProductMutation.mutate(addForm);
+          } else {
+            handleUpdateProduct();
+          }
+        }}
       />
 
       {/* Edit Product Dialog */}
-      <EditProductDialog
+      {/* <EditProductDialog
         open={openEditDialog}
         onClose={() => setOpenEditDialog(false)}
         form={editForm}
@@ -728,7 +757,7 @@ export default function InventoryPage() {
         isLoading={updateProductMutation.isPending}
         onImageRemove={handleEditImageRemove}
         onUpdate={handleUpdateProduct}
-      />
+      /> */}
 
       {/* Restock Dialog */}
       <RestockDialog
