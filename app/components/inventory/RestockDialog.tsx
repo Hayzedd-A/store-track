@@ -9,12 +9,14 @@ import {
   Box,
   Typography,
   TextField,
+  InputAdornment,
 } from "@mui/material";
 
 interface Product {
   _id: string;
   name: string;
   quantity: number;
+  cost: number;
   unitConfig: {
     saleUnit: string;
     restockUnit: string;
@@ -24,6 +26,7 @@ interface Product {
 
 interface RestockForm {
   quantity: string;
+  cost: string;
   notes: string;
 }
 
@@ -46,6 +49,11 @@ export default function RestockDialog({
   onClose,
   onSubmit,
 }: RestockDialogProps) {
+  // Calculate equivalent unit quantity
+  const restockQty = parseInt(form.quantity) || 0;
+  const unitsPerRestock = product?.unitConfig?.unitsPerRestock || 1;
+  const equivalentQty = restockQty * unitsPerRestock;
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Restock Product</DialogTitle>
@@ -65,6 +73,28 @@ export default function RestockDialog({
               value={form.quantity}
               onChange={(e) => onChange("quantity", e.target.value)}
               helperText={`Each ${product.unitConfig.restockUnit} = ${product.unitConfig.unitsPerRestock} ${product.unitConfig.saleUnit}`}
+              sx={{ mb: 2 }}
+            />
+            {restockQty > 0 && (
+              <Typography variant="body2" color="primary" sx={{ mb: 2 }}>
+                Equivalent: {equivalentQty} {product.unitConfig.saleUnit}
+              </Typography>
+            )}
+            <TextField
+              fullWidth
+              label="Cost Price (optional)"
+              type="number"
+              value={form.cost}
+              onChange={(e) => onChange("cost", e.target.value)}
+              placeholder={`${product.cost.toLocaleString()}`}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">₦</InputAdornment>
+                  ),
+                },
+              }}
+              helperText={`Current cost: ₦${product.cost.toLocaleString()} per ${product.unitConfig.saleUnit}`}
               sx={{ mb: 2 }}
             />
             <TextField

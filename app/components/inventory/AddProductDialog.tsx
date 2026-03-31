@@ -25,6 +25,7 @@ interface Category {
 interface AddProductForm {
   name: string;
   sku: string;
+  barcode: string;
   price: string;
   cost: string;
   quantity: string;
@@ -81,6 +82,15 @@ export default function AddProductDialog({
               value={form.sku}
               onChange={(e) => onChange("sku", e.target.value.toUpperCase())}
               required
+            />
+          </Grid>
+          <Grid>
+            <TextField
+              fullWidth
+              label="Barcode"
+              value={form.barcode}
+              onChange={(e) => onChange("barcode", e.target.value)}
+              placeholder="Scan or enter barcode"
             />
           </Grid>
 

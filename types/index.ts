@@ -25,24 +25,26 @@ export interface IUnitConfig {
 
 // Product Types
 export interface IProduct {
-  _id?: string;
+  _id: string;
   name: string;
   categoryId?: string | ICategory;
   sku: string;
+  barcode?: string;
   price: number;
   cost: number;
   quantity: number;
   image?: string;
+  publicId?: string; // Add publicId property
   minStock: number;
   shelfNo?: string;
   unitConfig: IUnitConfig;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Sale Item Types
 export interface ISaleItem {
-  _id?: string;
+  _id: string;
   productId: string | IProduct;
   productName: string;
   quantity: number;
@@ -53,18 +55,18 @@ export interface ISaleItem {
 
 // Sale Types
 export interface ISale {
-  _id?: string;
+  _id: string;
   totalAmount: number;
   paymentMethod: 'cash';
   status: 'completed' | 'cancelled' | 'refunded';
   items: ISaleItem[];
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Stock History Types
 export interface IStockHistory {
-  _id?: string;
+  _id: string;
   productId: string | IProduct;
   changeType: 'restock' | 'sale' | 'adjustment' | 'return';
   quantityChange: number;

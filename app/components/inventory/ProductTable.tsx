@@ -22,29 +22,13 @@ import {
   getStockStatus,
   getStockStatusColor,
 } from "@/lib/utils";
-
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  price: number;
-  cost: number;
-  quantity: number;
-  minStock: number;
-  shelfNo?: string;
-  unitConfig: {
-    saleUnit: string;
-    restockUnit: string;
-    unitsPerRestock: number;
-  };
-  categoryId?: { _id: string; name: string; color: string } | null;
-}
+import { IProduct } from "@/types";
 
 interface ProductTableProps {
-  products: Product[];
+  products: IProduct[];
   isLoading: boolean;
-  onEdit: (product: Product) => void;
-  onRestock: (product: Product) => void;
+  onEdit: (product: IProduct) => void;
+  onRestock: (product: IProduct) => void;
 }
 
 export default function ProductTable({
@@ -59,9 +43,10 @@ export default function ProductTable({
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: "#F1F5F9" }}>
-              <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Products</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>SKU</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Cost</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Price</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Quantity</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
@@ -101,7 +86,8 @@ export default function ProductTable({
                       <code>{product.sku}</code>
                     </TableCell>
                     <TableCell>
-                      {product.categoryId ? (
+                      {product.categoryId &&
+                      typeof product.categoryId !== "string" ? (
                         <Chip
                           label={product.categoryId.name}
                           size="small"
@@ -116,6 +102,7 @@ export default function ProductTable({
                         </Typography>
                       )}
                     </TableCell>
+                    <TableCell>{formatCurrency(product.cost)}</TableCell>
                     <TableCell>{formatCurrency(product.price)}</TableCell>
                     <TableCell>
                       <Typography

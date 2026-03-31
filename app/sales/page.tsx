@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Box,
   Card,
@@ -25,7 +25,7 @@ import {
   IconButton,
   InputAdornment,
   Divider,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Receipt as ReceiptIcon,
   Download as DownloadIcon,
@@ -33,7 +33,7 @@ import {
   DateRange as DateRangeIcon,
   TrendingUp as TrendingUpIcon,
   AttachMoney as MoneyIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 import {
   BarChart,
   Bar,
@@ -45,26 +45,27 @@ import {
   PieChart,
   Pie,
   Cell,
-} from 'recharts';
-import { formatCurrency, formatDate } from '@/lib/utils';
+} from "recharts";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { ISale } from "@/types";
 
-interface Sale {
-  _id: string;
-  totalAmount: number;
-  paymentMethod: string;
-  status: string;
-  items: Array<{
-    productName: string;
-    quantity: number;
-    price: number;
-    cost: number;
-    subtotal: number;
-  }>;
-  createdAt: string;
-}
+// interface ISale {
+//   _id: string;
+//   totalAmount: number;
+//   paymentMethod: string;
+//   status: string;
+//   items: Array<{
+//     productName: string;
+//     quantity: number;
+//     price: number;
+//     cost: number;
+//     subtotal: number;
+//   }>;
+//   createdAt: string;
+// }
 
 interface SalesData {
-  data: Sale[];
+  data: ISale[];
   summary: {
     totalSales: number;
     totalRevenue: number;
@@ -79,45 +80,58 @@ interface SalesData {
 
 export default function SalesPage() {
   const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: '',
+    startDate: "",
+    endDate: "",
   });
-  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [selectedSale, setSelectedSale] = useState<ISale | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Fetch sales data
-  const { data: salesData, isLoading, refetch } = useQuery({
-    queryKey: ['sales', dateRange],
+  const {
+    data: salesData,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["sales", dateRange],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
-      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
-      params.append('limit', '100');
+      if (dateRange.startDate) params.append("startDate", dateRange.startDate);
+      if (dateRange.endDate) params.append("endDate", dateRange.endDate);
+      params.append("limit", "100");
       const res = await fetch(`/api/sales?${params.toString()}`);
       return res.json();
     },
   });
 
-  const sales: Sale[] = salesData?.data || [];
+  const sales: ISale[] = salesData?.data || [];
   const summary = salesData?.summary || { totalSales: 0, totalRevenue: 0 };
-  const totalProfit = sales.reduce((sum, sale) => 
-    sum + sale.items.reduce((itemSum, item) => itemSum + (item.price - item.cost) * item.quantity, 0), 0
+  const totalProfit = sales.reduce(
+    (sum, sale) =>
+      sum +
+      sale.items.reduce(
+        (itemSum, item) => itemSum + (item.price - item.cost) * item.quantity,
+        0,
+      ),
+    0,
   );
 
   const formalizeCurrency = (amount: number) => {
     if (amount >= 1e6) return `${(amount / 1e6).toFixed(1)}M`;
     if (amount >= 1e3) return `${(amount / 1e3).toFixed(1)}K`;
     return formatCurrency(amount);
-  }
+  };
 
   // Calculate chart data
   const salesChartData = useMemo(() => {
-    const dailySales: Record<string, { date: string; sales: number; revenue: number }> = {};
+    const dailySales: Record<
+      string,
+      { date: string; sales: number; revenue: number }
+    > = {};
 
     sales.forEach((sale) => {
-      const date = new Date(sale.createdAt).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
+      const date = new Date(sale.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
       });
 
       if (!dailySales[date]) {
@@ -133,12 +147,19 @@ export default function SalesPage() {
 
   // Calculate top products
   const topProducts = useMemo(() => {
-    const productSales: Record<string, { name: string; quantity: number; revenue: number }> = {};
+    const productSales: Record<
+      string,
+      { name: string; quantity: number; revenue: number }
+    > = {};
 
     sales.forEach((sale) => {
       sale.items.forEach((item) => {
         if (!productSales[item.productName]) {
-          productSales[item.productName] = { name: item.productName, quantity: 0, revenue: 0 };
+          productSales[item.productName] = {
+            name: item.productName,
+            quantity: 0,
+            revenue: 0,
+          };
         }
         productSales[item.productName].quantity += item.quantity;
         productSales[item.productName].revenue += item.subtotal;
@@ -154,16 +175,16 @@ export default function SalesPage() {
   const pieData = topProducts.map((product, index) => ({
     name: product.name,
     value: product.revenue,
-    color: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index],
+    color: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][index],
   }));
 
-  const handleViewDetails = (sale: Sale) => {
+  const handleViewDetails = (sale: ISale) => {
     setSelectedSale(sale);
     setDetailsOpen(true);
   };
 
-  const handlePrintReceipt = (sale: Sale) => {
-    const printWindow = window.open('', '_blank');
+  const handlePrintReceipt = (sale: ISale) => {
+    const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
     const receiptHTML = `
@@ -185,12 +206,16 @@ export default function SalesPage() {
             <p>Date: ${formatDate(sale.createdAt)}</p>
           </div>
           <div>
-            ${sale.items.map(item => `
+            ${sale.items
+              .map(
+                (item) => `
               <div class="item">
                 <span>${item.productName} x${item.quantity}</span>
                 <span>${formatCurrency(item.subtotal)}</span>
               </div>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </div>
           <div class="total">
             <div class="item">
@@ -216,7 +241,7 @@ export default function SalesPage() {
 
   const handleExport = () => {
     const csvContent = [
-      ['Date', 'Sale ID', 'Items', 'Total', 'Payment', 'Status'],
+      ["Date", "Sale ID", "Items", "Total", "Payment", "Status"],
       ...sales.map((sale) => [
         formatDate(sale.createdAt),
         sale._id,
@@ -226,22 +251,29 @@ export default function SalesPage() {
         sale.status,
       ]),
     ]
-      .map((row) => row.join(','))
-      .join('\n');
+      .map((row) => row.join(","))
+      .join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `sales-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `sales-report-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
   };
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <ReceiptIcon sx={{ fontSize: 32, color: 'primary.main', mr: 1 }} />
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <ReceiptIcon sx={{ fontSize: 32, color: "primary.main", mr: 1 }} />
           <Typography variant="h4" fontWeight="bold">
             Sales History
           </Typography>
@@ -257,19 +289,19 @@ export default function SalesPage() {
 
       {/* Summary Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Box
                   sx={{
                     p: 1.5,
                     borderRadius: 2,
-                    backgroundColor: '#EFF6FF',
+                    backgroundColor: "#EFF6FF",
                     mr: 2,
                   }}
                 >
-                  <ReceiptIcon sx={{ color: '#3B82F6' }} />
+                  <ReceiptIcon sx={{ color: "#3B82F6" }} />
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -283,19 +315,19 @@ export default function SalesPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Box
                   sx={{
                     p: 1.5,
                     borderRadius: 2,
-                    backgroundColor: '#ECFDF5',
+                    backgroundColor: "#ECFDF5",
                     mr: 2,
                   }}
                 >
-                  <MoneyIcon sx={{ color: '#10B981' }} />
+                  <MoneyIcon sx={{ color: "#10B981" }} />
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -309,19 +341,19 @@ export default function SalesPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Box
                   sx={{
                     p: 1.5,
                     borderRadius: 2,
-                    backgroundColor: '#FEF3C7',
+                    backgroundColor: "#FEF3C7",
                     mr: 2,
                   }}
                 >
-                  <TrendingUpIcon sx={{ color: '#F59E0B' }} />
+                  <TrendingUpIcon sx={{ color: "#F59E0B" }} />
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -335,19 +367,19 @@ export default function SalesPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Box
                   sx={{
                     p: 1.5,
                     borderRadius: 2,
-                    backgroundColor: '#F3F4F6',
+                    backgroundColor: "#F3F4F6",
                     mr: 2,
                   }}
                 >
-                  <TrendingUpIcon sx={{ color: '#6B7280' }} />
+                  <TrendingUpIcon sx={{ color: "#6B7280" }} />
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -357,7 +389,7 @@ export default function SalesPage() {
                     {formatCurrency(
                       summary.totalSales > 0
                         ? summary.totalRevenue / summary.totalSales
-                        : 0
+                        : 0,
                     )}
                   </Typography>
                 </Box>
@@ -371,7 +403,7 @@ export default function SalesPage() {
       <Card sx={{ borderRadius: 3, mb: 3 }}>
         <CardContent sx={{ p: 2 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid>
               <TextField
                 fullWidth
                 type="date"
@@ -384,7 +416,7 @@ export default function SalesPage() {
                 size="small"
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid>
               <TextField
                 fullWidth
                 type="date"
@@ -397,11 +429,11 @@ export default function SalesPage() {
                 size="small"
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid>
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={() => setDateRange({ startDate: '', endDate: '' })}
+                onClick={() => setDateRange({ startDate: "", endDate: "" })}
               >
                 Clear Filter
               </Button>
@@ -424,8 +456,8 @@ export default function SalesPage() {
                 <YAxis tickFormatter={formalizeCurrency} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
-                    name === 'revenue' ? formatCurrency(value) : value,
-                    name === 'revenue' ? 'Revenue' : 'Sales',
+                    name === "revenue" ? formatCurrency(value) : value,
+                    name === "revenue" ? "Revenue" : "Sales",
                   ]}
                 />
                 <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
@@ -448,7 +480,7 @@ export default function SalesPage() {
                   outerRadius={80}
                   dataKey="value"
                   label={({ name, percent }) =>
-                    `${name.substring(0, 10)}... ${(percent * 100).toFixed(0)}%`
+                    `${name?.substring(0, 10)}... ${(percent || 0 * 100).toFixed(0)}%`
                   }
                 >
                   {pieData.map((entry, index) => (
@@ -492,19 +524,19 @@ export default function SalesPage() {
                         sx={{
                           backgroundColor:
                             index === 0
-                              ? '#FCD34D'
+                              ? "#FCD34D"
                               : index === 1
-                              ? '#D1D5DB'
-                              : index === 2
-                              ? '#F97316'
-                              : '#E5E7EB',
+                                ? "#D1D5DB"
+                                : index === 2
+                                  ? "#F97316"
+                                  : "#E5E7EB",
                           fontWeight: 600,
                         }}
                       />
                     </TableCell>
                     <TableCell>{product.name}</TableCell>
                     <TableCell align="right">{product.quantity}</TableCell>
-                    <TableCell align="right" fontWeight="600">
+                    <TableCell align="right">
                       {formatCurrency(product.revenue)}
                     </TableCell>
                   </TableRow>
@@ -517,10 +549,10 @@ export default function SalesPage() {
 
       {/* Sales Table */}
       <Card sx={{ borderRadius: 3 }}>
-        <TableContainer component={Paper}  >
+        <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#F1F5F9' }}>
+              <TableRow sx={{ backgroundColor: "#F1F5F9" }}>
                 <TableCell sx={{ fontWeight: 600 }}>Date & Time</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Sale ID</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Items</TableCell>
@@ -532,25 +564,31 @@ export default function SalesPage() {
             </TableHead>
             <TableBody>
               {isLoading ? (
-                Array(7).fill(0).map((_, j) => (
-                  <TableRow key={j}>
-                    {Array(6).fill(0).map((_, j) => (
-                      <TableCell key={j}>
-                        <Box
-                          sx={{
-                            height: 24,
-                            backgroundColor: '#E2E8F0',
-                            borderRadius: 1,
-                          }}
-                        />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                Array(7)
+                  .fill(0)
+                  .map((_, j) => (
+                    <TableRow key={j}>
+                      {Array(6)
+                        .fill(0)
+                        .map((_, j) => (
+                          <TableCell key={j}>
+                            <Box
+                              sx={{
+                                height: 24,
+                                backgroundColor: "#E2E8F0",
+                                borderRadius: 1,
+                              }}
+                            />
+                          </TableCell>
+                        ))}
+                    </TableRow>
+                  ))
               ) : sales.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <Typography color="text.secondary">No sales found</Typography>
+                    <Typography color="text.secondary">
+                      No sales found
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -566,13 +604,13 @@ export default function SalesPage() {
                     </TableCell>
                     <TableCell>
                       <code
-                        sx={{
-                          backgroundColor: '#F1F5F9',
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          fontSize: '0.85rem',
-                        }}
+                      // sx={{
+                      //   backgroundColor: "#F1F5F9",
+                      //   px: 1,
+                      //   py: 0.5,
+                      //   borderRadius: 1,
+                      //   fontSize: "0.85rem",
+                      // }}
                       >
                         {sale._id.slice(-8).toUpperCase()}
                       </code>
@@ -585,14 +623,22 @@ export default function SalesPage() {
                     </TableCell>
                     <TableCell>
                       <Typography fontWeight="600" color="success.main">
-                        {formatCurrency(sale.items.reduce((sum, item) => sum + (item.price - item.cost) * item.quantity, 0))}
+                        {formatCurrency(
+                          sale.items.reduce(
+                            (sum, item) =>
+                              sum + (item.price - item.cost) * item.quantity,
+                            0,
+                          ),
+                        )}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={sale.status}
                         size="small"
-                        color={sale.status === 'completed' ? 'success' : 'warning'}
+                        color={
+                          sale.status === "completed" ? "success" : "warning"
+                        }
                       />
                     </TableCell>
                     <TableCell>
@@ -630,11 +676,11 @@ export default function SalesPage() {
             <Box>
               <Box
                 sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  justifyContent: "space-between",
                   mb: 2,
                   p: 2,
-                  backgroundColor: '#F1F5F9',
+                  backgroundColor: "#F1F5F9",
                   borderRadius: 2,
                 }}
               >
@@ -646,7 +692,7 @@ export default function SalesPage() {
                     {selectedSale._id.slice(-8).toUpperCase()}
                   </Typography>
                 </Box>
-                <Box sx={{ textAlign: 'right' }}>
+                <Box sx={{ textAlign: "right" }}>
                   <Typography variant="body2" color="text.secondary">
                     Date
                   </Typography>
@@ -665,10 +711,10 @@ export default function SalesPage() {
                 <Box
                   key={index}
                   sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
+                    display: "flex",
+                    justifyContent: "space-between",
                     py: 1,
-                    borderBottom: '1px solid #E5E7EB',
+                    borderBottom: "1px solid #E5E7EB",
                   }}
                 >
                   <Box>
@@ -687,8 +733,8 @@ export default function SalesPage() {
 
               <Box
                 sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
                 <Typography variant="h6" fontWeight="bold">
@@ -708,4 +754,3 @@ export default function SalesPage() {
     </Box>
   );
 }
-

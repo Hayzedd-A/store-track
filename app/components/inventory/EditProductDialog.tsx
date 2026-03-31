@@ -14,6 +14,8 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import ImageUpload from "../ui/ImageUpload";
+import { FormProduct } from "@/app/inventory/page";
 
 interface Category {
   _id: string;
@@ -21,71 +23,93 @@ interface Category {
   color: string;
 }
 
-interface EditProductForm {
-  _id: string;
-  name: string;
-  sku: string;
-  price: string;
-  cost: string;
-  quantity: string;
-  minStock: string;
-  shelfNo: string;
-  categoryId: string;
-  saleUnit: string;
-  restockUnit: string;
-  unitsPerRestock: string;
-}
-
 interface EditProductDialogProps {
   open: boolean;
-  form: EditProductForm;
+  form: FormProduct;
   categories: Category[];
   isLoading: boolean;
-  onChange: (field: keyof EditProductForm, value: string) => void;
+  onImageChange: (file: File) => void;
+  onImageRemove: () => void;
+  setForm: React.Dispatch<React.SetStateAction<FormProduct>>;
   onClose: () => void;
-  onSubmit: () => void;
+  onUpdate: () => void;
 }
 
 export default function EditProductDialog({
   open,
   form,
+  setForm,
+  onImageChange,
+  onImageRemove,
   categories,
   isLoading,
-  onChange,
   onClose,
-  onSubmit,
+  onUpdate,
 }: EditProductDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Edit Product</DialogTitle>
       <DialogContent>
         <Grid container spacing={2} sx={{ mt: 1 }}>
-          <Grid xs={12} md={6}>
+          <Grid>
+            {/* Image Upload for Edit Product */}
+            <ImageUpload
+              label="Product Image"
+              previewUrl={
+                form.newImageFile
+                  ? URL.createObjectURL(form.newImageFile)
+                  : form.imageRemoved
+                    ? null
+                    : form.currentImage
+              }
+              onChange={onImageChange}
+              onRemove={onImageRemove}
+            />
+          </Grid>
+          <Grid>
             <TextField
               fullWidth
               label="Product Name"
               value={form.name}
-              onChange={(e) => onChange("name", e.target.value)}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
           </Grid>
-          <Grid xs={12} md={6}>
+          <Grid>
             <TextField
               fullWidth
               label="SKU"
               value={form.sku}
-              onChange={(e) => onChange("sku", e.target.value.toUpperCase())}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  sku: e.target.value.toUpperCase(),
+                })
+              }
               required
             />
           </Grid>
-
-          <Grid xs={6} md={3}>
+          <Grid>
+            <TextField
+              fullWidth
+              label="Barcode"
+              value={form.barcode || ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  barcode: e.target.value,
+                })
+              }
+              placeholder="Scan or enter barcode"
+            />
+          </Grid>
+          <Grid>
             <TextField
               fullWidth
               label="Price"
               type="number"
               value={form.price}
-              onChange={(e) => onChange("price", e.target.value)}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">₦</InputAdornment>
@@ -94,13 +118,13 @@ export default function EditProductDialog({
               required
             />
           </Grid>
-          <Grid xs={6} md={3}>
+          <Grid>
             <TextField
               fullWidth
               label="Cost"
               type="number"
               value={form.cost}
-              onChange={(e) => onChange("cost", e.target.value)}
+              onChange={(e) => setForm({ ...form, cost: e.target.value })}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">₦</InputAdornment>
@@ -109,35 +133,36 @@ export default function EditProductDialog({
               required
             />
           </Grid>
-          <Grid xs={6} md={3}>
+          <Grid>
             <TextField
               fullWidth
               label="Quantity"
               type="number"
               value={form.quantity}
-              onChange={(e) => onChange("quantity", e.target.value)}
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
             />
           </Grid>
-          <Grid xs={6} md={3}>
+          <Grid>
             <TextField
               fullWidth
               label="Min Stock"
               type="number"
               value={form.minStock}
-              onChange={(e) => onChange("minStock", e.target.value)}
+              onChange={(e) => setForm({ ...form, minStock: e.target.value })}
             />
           </Grid>
-
-          <Grid xs={12} md={6}>
+          <Grid>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
                 value={form.categoryId}
                 label="Category"
-                onChange={(e) => onChange("categoryId", e.target.value)}
+                onChange={(e) =>
+                  setForm({ ...form, categoryId: e.target.value })
+                }
               >
                 <MenuItem value="">No Category</MenuItem>
-                {categories.map((cat) => (
+                {categories.map((cat: Category) => (
                   <MenuItem key={cat._id} value={cat._id}>
                     {cat.name}
                   </MenuItem>
@@ -145,48 +170,51 @@ export default function EditProductDialog({
               </Select>
             </FormControl>
           </Grid>
-          <Grid xs={12} md={6}>
+          <Grid>
             <TextField
               fullWidth
               label="Shelf Number"
               value={form.shelfNo}
-              onChange={(e) => onChange("shelfNo", e.target.value)}
+              onChange={(e) => setForm({ ...form, shelfNo: e.target.value })}
               placeholder="e.g., A1, B2"
             />
           </Grid>
-
-          <Grid xs={4}>
+          <Grid>
             <TextField
               fullWidth
               label="Sale Unit"
               value={form.saleUnit}
-              onChange={(e) => onChange("saleUnit", e.target.value)}
+              onChange={(e) => setForm({ ...form, saleUnit: e.target.value })}
               placeholder="piece, kg, pack"
             />
           </Grid>
-          <Grid xs={4}>
+          <Grid>
             <TextField
               fullWidth
               label="Restock Unit"
               value={form.restockUnit}
-              onChange={(e) => onChange("restockUnit", e.target.value)}
+              onChange={(e) =>
+                setForm({ ...form, restockUnit: e.target.value })
+              }
               placeholder="box, crate, dozen"
             />
           </Grid>
-          <Grid xs={4}>
+          <Grid>
             <TextField
               fullWidth
               label="Units per Restock"
               type="number"
               value={form.unitsPerRestock}
-              onChange={(e) => onChange("unitsPerRestock", e.target.value)}
+              onChange={(e) =>
+                setForm({ ...form, unitsPerRestock: Number(e.target.value) })
+              }
             />
           </Grid>
         </Grid>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={onSubmit} disabled={isLoading}>
+        <Button onClick={() => onClose()}>Cancel</Button>
+        <Button variant="contained" onClick={onUpdate} disabled={isLoading}>
           {isLoading ? "Updating..." : "Update Product"}
         </Button>
       </DialogActions>

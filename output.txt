@@ -1,0 +1,51 @@
+All planned modifications have been applied to both the frontend (`app/inventory/page.tsx`) and the backend (`app/api/products/route.ts`, `app/api/products/[id]/route.ts`) to enable image editing and removal functionality.
+
+The workflow is now:
+*   **Frontend (`app/inventory/page.tsx`)**:
+    *   Manages image state (`newImageFile`, `imageRemoved`, `currentImage`, `currentPublicId`).
+    *   Uses the enhanced `ImageUpload` component for UI in both Add and Edit Product Dialogs.
+    *   Constructs a `FormData` object containing all product data and image-related flags/files.
+    *   Sends this `FormData` to the appropriate backend API route (`/api/products` for POST, `/api/products/[id]` for PUT).
+*   **Backend (`app/api/products/route.ts`, `app/api/products/[id]/route.ts`)**:
+    *   Accepts `multipart/form-data`.
+    *   Parses `FormData`.
+    *   Performs Cloudinary upload/deletion based on flags and files in the `FormData`.
+    *   Updates the MongoDB `Product` document with the correct `image` URL and `publicId`.
+
+**Summary of changes:**
+
+**1. `types/index.ts`:**
+*   Added `publicId?: string;` to the `IProduct` interface.
+
+**2. `models/Product.ts`:**
+*   Added `publicId` field with type `String` and `default: null` to the `ProductSchema`.
+
+**3. `app/components/ui/ImageUpload.tsx`:**
+*   Modified the `ImageUploadProps` interface to include an optional `onRemove?: () => void;` prop.
+*   Added a "Remove Image" button that appears when `previewUrl` is provided and `onRemove` is defined, triggering the `onRemove` callback.
+
+**4. `app/api/products/route.ts` (POST - Create Product):**
+*   Updated `productSchema` to include `publicId: z.string().nullable().optional().default(null)`.
+*   Modified the `POST` handler to extract `public_id` from the Cloudinary upload result and store it along with `secure_url` when creating a new product.
+*   Corrected the `uploadImage` call by removing an extraneous `true` argument.
+
+**5. `app/api/products/[id]/route.ts` (PUT - Update Product):**
+*   Updated `updateSchema` to include `publicId: z.string().nullable().optional()` and `imageRemoved: z.boolean().optional().default(false)`.
+*   Introduced a new helper function `parseProductUpdateFormData` to correctly parse `multipart/form-data` for product updates, extracting all fields including `image`, `imageRemoved`, and `currentPublicId`.
+*   Refactored the `PUT` handler to:
+    *   Conditionally process `multipart/form-data` or JSON payloads.
+    *   Fetch the current product details from the database to get existing `image` and `publicId`.
+    *   Implement logic for Cloudinary deletion (if `imageRemoved` is true) and upload (if a new `image` file is provided), correctly handling replacement scenarios (deleting the old image before uploading a new one).
+    *   Update the `Product` document in MongoDB with the new `image` URL and `publicId`.
+
+**6. `app/inventory/page.tsx`:**
+*   Updated the internal `Product` interface to include `image?: string;` and `publicId?: string;`.
+*   Modified the `editForm` state to include `currentImage`, `currentPublicId`, `newImageFile`, and `imageRemoved` to manage image-related states during editing.
+*   Updated `openEditDialogWithProduct` to initialize these new image-related fields when a product is selected for editing.
+*   Re-introduced `handleEditImageChange` and `handleEditImageRemove` functions to manage local state for image selection and removal in the edit form.
+*   Modified `handleAddProduct` to correctly check for required fields before mutating.
+*   Modified `handleUpdateProduct` to construct a `FormData` object containing all product fields, including `newImageFile`, `imageRemoved` flag, and `currentPublicId`, and then send this `FormData` to the `updateProductMutation`.
+*   Modified `updateProductMutation` to accept `FormData` directly as its payload, removing the `Content-Type: application/json` header.
+*   Replaced the custom image upload section in the "Add Product Dialog" with the `ImageUpload` component.
+*   Re-introduced the `ImageUpload` component in the "Edit Product Dialog" section, binding its `previewUrl`, `onChange`, and `onRemove` props to the `editForm`'s image-related states and handlers.
+*   Removed the redundant `handleImageChange` function.

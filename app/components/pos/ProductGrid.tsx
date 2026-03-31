@@ -2,28 +2,13 @@
 
 import { Grid, Card, Typography, Chip } from "@mui/material";
 import { formatCurrency } from "@/lib/utils";
-
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  price: number;
-  cost: number;
-  quantity: number;
-  minStock: number;
-  shelfNo?: string;
-  unitConfig: {
-    saleUnit: string;
-    restockUnit: string;
-    unitsPerRestock: number;
-  };
-  categoryId?: { _id: string; name: string; color: string } | null;
-}
+import Image from "next/image";
+import { IProduct } from "@/types";
 
 interface ProductGridProps {
-  products: Product[];
+  products: IProduct[];
   isLoading: boolean;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: IProduct) => void;
 }
 
 export default function ProductGrid({
@@ -70,6 +55,14 @@ export default function ProductGrid({
             }}
             onClick={() => onAddToCart(product)}
           >
+            <Image
+              src={product.image ? product.image : "/placeholder.jpeg"}
+              alt={product.name}
+              width={100}
+              height={100}
+              style={{ objectFit: "cover" }}
+              unoptimized
+            />
             <Typography
               variant="subtitle1"
               fontWeight="600"
@@ -86,7 +79,7 @@ export default function ProductGrid({
               />
             )}
             <Typography variant="h6" color="primary.main" fontWeight="bold">
-              {formatCurrency(product.cost)}
+              {formatCurrency(product.price)}
             </Typography>
             <Typography
               variant="caption"

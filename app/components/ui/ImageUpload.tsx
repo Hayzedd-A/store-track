@@ -1,11 +1,12 @@
 "use client";
 
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, Stack } from "@mui/material";
 
 interface ImageUploadProps {
   label?: string;
   previewUrl?: string | null;
   onChange: (file: File) => void;
+  onRemove?: () => void; // Added onRemove prop
   accept?: string;
 }
 
@@ -13,6 +14,7 @@ export default function ImageUpload({
   label = "Upload Image",
   previewUrl,
   onChange,
+  onRemove, // Destructure onRemove
   accept = "image/*",
 }: ImageUploadProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,10 +44,17 @@ export default function ImageUpload({
           }}
         />
       )}
-      <Button variant="outlined" component="label" fullWidth>
-        {previewUrl ? "Change Image" : label}
-        <input hidden accept={accept} type="file" onChange={handleChange} />
-      </Button>
+      <Stack direction="row" spacing={1}> {/* Use Stack for buttons */}
+        <Button variant="outlined" component="label" fullWidth>
+          {previewUrl ? "Change Image" : label}
+          <input hidden accept={accept} type="file" onChange={handleChange} />
+        </Button>
+        {previewUrl && onRemove && ( // Conditionally render Remove button
+          <Button variant="outlined" color="error" onClick={onRemove} fullWidth>
+            Remove Image
+          </Button>
+        )}
+      </Stack>
     </Box>
   );
 }

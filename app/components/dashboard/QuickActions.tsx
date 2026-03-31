@@ -38,7 +38,7 @@ export default function QuickActions() {
   return (
     <Grid container spacing={2}>
       {actions.map((action) => (
-        <Grid item xs={12} sm={6} md={3} key={action.label}>
+        <Grid key={action.label}>
           <Card
             sx={{
               p: 2,

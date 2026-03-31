@@ -155,12 +155,14 @@ export async function POST(req: NextRequest) {
     await StockHistory.insertMany(historyEntries, { session });
 
     // C. Create the sale
-    const [sale] = await Sale.create([{
+    const sale = new Sale({
       totalAmount,
       paymentMethod,
       status: 'completed',
       items: saleItems,
-    }], { session });
+    });
+
+    await sale.save({ session })
 
     await session.commitTransaction();
     return NextResponse.json({ success: true, data: sale }, { status: 201 });

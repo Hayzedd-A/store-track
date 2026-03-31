@@ -13,18 +13,19 @@ import {
   Delete as DeleteIcon,
   Category as CategoryIcon,
 } from "@mui/icons-material";
+import { ICategory } from "@/types";
 
-interface Category {
-  _id: string;
-  name: string;
-  color: string;
-  image?: string;
-}
+// interface ICategory {
+//   _id: string;
+//   name: string;
+//   color: string;
+//   image?: string;
+// }
 
 interface CategoryCardProps {
-  category: Category;
-  onEdit: (category: Category) => void;
-  onDelete: (category: Category) => void;
+  category: ICategory;
+  onEdit: (category: ICategory) => void;
+  onDelete: (category: ICategory) => void;
 }
 
 export default function CategoryCard({

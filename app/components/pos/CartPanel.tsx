@@ -18,22 +18,10 @@ import {
   Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { formatCurrency } from "@/lib/utils";
-
-interface Product {
-  _id: string;
-  name: string;
-  cost: number;
-  unitConfig: { saleUnit: string };
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-  subtotal: number;
-}
+import { ICartItem } from "@/types";
 
 interface CartPanelProps {
-  cart: CartItem[];
+  cart: ICartItem[];
   isMobile: boolean;
   onUpdateQuantity: (productId: string, newQty: number) => void;
   onRemove: (productId: string) => void;
@@ -84,14 +72,17 @@ export default function CartPanel({
               >
                 <ListItemText
                   primary={item.product.name}
-                  secondary={`${formatCurrency(item.product.cost)} / ${item.product.unitConfig.saleUnit}`}
+                  secondary={`${formatCurrency(item.product.price)} / ${item.product.unitConfig.saleUnit}`}
                   primaryTypographyProps={{ fontWeight: 600 }}
                 />
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <IconButton
                     size="small"
                     onClick={() =>
-                      onUpdateQuantity(item.product._id, item.quantity - 1)
+                      onUpdateQuantity(
+                        item.product?._id || "",
+                        item.quantity - 1,
+                      )
                     }
                   >
                     <RemoveIcon fontSize="small" />
@@ -102,7 +93,10 @@ export default function CartPanel({
                   <IconButton
                     size="small"
                     onClick={() =>
-                      onUpdateQuantity(item.product._id, item.quantity + 1)
+                      onUpdateQuantity(
+                        item.product?._id || "",
+                        item.quantity + 1,
+                      )
                     }
                   >
                     <AddIcon fontSize="small" />

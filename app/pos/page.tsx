@@ -18,26 +18,27 @@ import ProductGrid from "@/app/components/pos/ProductGrid";
 import CartPanel from "@/app/components/pos/CartPanel";
 import CheckoutDialog from "@/app/components/pos/CheckoutDialog";
 import ReceiptDialog from "@/app/components/pos/ReceiptDialog";
+import { IProduct } from "@/types";
 
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  price: number;
-  cost: number;
-  quantity: number;
-  minStock: number;
-  shelfNo?: string;
-  unitConfig: {
-    saleUnit: string;
-    restockUnit: string;
-    unitsPerRestock: number;
-  };
-  categoryId?: { _id: string; name: string; color: string } | null;
-}
+// interface IProduct {
+//   _id: string;
+//   name: string;
+//   sku: string;
+//   price: number;
+//   cost: number;
+//   quantity: number;
+//   minStock: number;
+//   shelfNo?: string;
+//   unitConfig: {
+//     saleUnit: string;
+//     restockUnit: string;
+//     unitsPerRestock: number;
+//   };
+//   categoryId?: { _id: string; name: string; color: string } | null;
+// }
 
 interface CartItem {
-  product: Product;
+  product: IProduct;
   quantity: number;
   subtotal: number;
 }
@@ -59,6 +60,27 @@ export default function POSPage() {
   } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** Play a short confirmation beep via the Web Audio API */
+  const playBeep = () => {
+    try {
+      const ctx = new (window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(1046, ctx.currentTime); // C6
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    } catch (_) {
+      // Audio not available — silent fail is acceptable
+    }
+  };
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ["products"],
@@ -105,17 +127,20 @@ export default function POSPage() {
     onSettled: () => setProcessing(false),
   });
 
-  const products: Product[] = productsData?.data || [];
+  const products: IProduct[] = productsData?.data || [];
   const categories = categoriesData?.data || [];
 
   const filteredProducts = useMemo(
     () =>
-      products.filter((p: Product) => {
+      products.filter((p: IProduct) => {
         const matchesSearch =
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.sku.toLowerCase().includes(searchQuery.toLowerCase());
+          p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesCategory =
-          !selectedCategory || p.categoryId?._id === selectedCategory;
+          typeof selectedCategory !== "undefined" &&
+          typeof p.categoryId !== "string" &&
+          (!selectedCategory || p.categoryId?._id === selectedCategory);
         return matchesSearch && matchesCategory;
       }),
     [products, searchQuery, selectedCategory],
@@ -124,7 +149,7 @@ export default function POSPage() {
   const cartTotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: IProduct) => {
     const existing = cart.find((i) => i.product._id === product._id);
     if (existing) {
       if (existing.quantity >= product.quantity) {
@@ -139,7 +164,7 @@ export default function POSPage() {
             ? {
                 ...i,
                 quantity: i.quantity + 1,
-                subtotal: (i.quantity + 1) * product.cost,
+                subtotal: (i.quantity + 1) * product.price,
               }
             : i,
         ),
@@ -149,9 +174,23 @@ export default function POSPage() {
         setError("Product is out of stock");
         return;
       }
-      setCart([...cart, { product, quantity: 1, subtotal: product.cost }]);
+      setCart([...cart, { product, quantity: 1, subtotal: product.price }]);
     }
     setError(null);
+  };
+
+  /** Called by ProductSearch when a barcode is successfully scanned */
+  const handleBarcodeDetected = (barcode: string) => {
+    const product = products.find(
+      (p: IProduct) =>
+        p.barcode && p.barcode.toLowerCase() === barcode.toLowerCase()
+    );
+    if (!product) {
+      setError(`No product found for barcode: ${barcode}`);
+      return;
+    }
+    addToCart(product);
+    playBeep();
   };
 
   const updateCartQuantity = (productId: string, newQty: number) => {
@@ -159,7 +198,7 @@ export default function POSPage() {
       setCart(cart.filter((i) => i.product._id !== productId));
       return;
     }
-    const product = products.find((p: Product) => p._id === productId);
+    const product = products.find((p: IProduct) => p._id === productId);
     if (product && newQty > product.quantity) {
       setError(`Only ${product.quantity} available`);
       return;
@@ -167,7 +206,7 @@ export default function POSPage() {
     setCart(
       cart.map((i) =>
         i.product._id === productId
-          ? { ...i, quantity: newQty, subtotal: newQty * i.product.cost }
+          ? { ...i, quantity: newQty, subtotal: newQty * i.product.price }
           : i,
       ),
     );
@@ -200,6 +239,7 @@ export default function POSPage() {
                 categories={categories}
                 onSearchChange={setSearchQuery}
                 onCategoryChange={setSelectedCategory}
+                onBarcodeDetected={handleBarcodeDetected}
               />
               <ProductGrid
                 products={filteredProducts}

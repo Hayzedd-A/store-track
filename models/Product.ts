@@ -41,6 +41,12 @@ const ProductSchema = new Schema<IProductDocument>(
       unique: true,
       uppercase: true,
     },
+    barcode: {
+      type: String,
+      default: null,
+      unique: true,
+      sparse: true,
+    },
     price: {
       type: Number,
       required: true,
@@ -59,6 +65,10 @@ const ProductSchema = new Schema<IProductDocument>(
       min: 0,
     },
     image: {
+      type: String,
+      default: null,
+    },
+    publicId: {
       type: String,
       default: null,
     },

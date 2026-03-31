@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Card,
@@ -17,14 +17,14 @@ import {
   TextField,
   Snackbar,
   Alert,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Category as CategoryIcon,
   CloudUpload as CloudUploadIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 interface Category {
   _id: string;
@@ -35,8 +35,16 @@ interface Category {
 }
 
 const COLORS = [
-  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+  "#06B6D4",
+  "#84CC16",
+  "#F97316",
+  "#6366F1",
 ];
 
 export default function CategoriesPage() {
@@ -44,35 +52,47 @@ export default function CategoriesPage() {
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({ name: '', color: '#3B82F6', image: null as File | null });
+  const [formData, setFormData] = useState({
+    name: "",
+    color: "#3B82F6",
+    image: null as File | null,
+  });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({
     open: false,
-    message: '',
-    severity: 'success',
+    message: "",
+    severity: "success",
   });
 
   // Fetch categories
   const { data: categoriesData, isLoading } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: async () => {
-      const res = await fetch('/api/categories');
+      const res = await fetch("/api/categories");
       return res.json();
     },
   });
 
   // Create category mutation
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; color: string; image: File | null }) => {
+    mutationFn: async (data: {
+      name: string;
+      color: string;
+      image: File | null;
+    }) => {
       if (data.image) {
         const formData = new FormData();
-        formData.append('name', data.name);
-        formData.append('color', data.color);
-        formData.append('image', data.image);
+        formData.append("name", data.name);
+        formData.append("color", data.color);
+        formData.append("image", data.image);
 
-        const res = await fetch('/api/categories', {
-          method: 'POST',
+        const res = await fetch("/api/categories", {
+          method: "POST",
           body: formData,
         });
         if (!res.ok) {
@@ -81,9 +101,9 @@ export default function CategoriesPage() {
         }
         return res.json();
       } else {
-        const res = await fetch('/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: data.name, color: data.color }),
         });
         if (!res.ok) {
@@ -94,28 +114,38 @@ export default function CategoriesPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
       setOpenDialog(false);
-      setFormData({ name: '', color: '#3B82F6', image: null });
+      setFormData({ name: "", color: "#3B82F6", image: null });
       setImagePreview(null);
-      setSnackbar({ open: true, message: 'Category added successfully!', severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: "Category added successfully!",
+        severity: "success",
+      });
     },
     onError: (error: Error) => {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
+      setSnackbar({ open: true, message: error.message, severity: "error" });
     },
   });
 
   // Update category mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { name: string; color: string; image: File | null } }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { name: string; color: string; image: File | null };
+    }) => {
       if (data.image) {
         const formData = new FormData();
-        formData.append('name', data.name);
-        formData.append('color', data.color);
-        formData.append('image', data.image);
+        formData.append("name", data.name);
+        formData.append("color", data.color);
+        formData.append("image", data.image);
 
         const res = await fetch(`/api/categories?id=${id}`, {
-          method: 'PUT',
+          method: "PUT",
           body: formData,
         });
         if (!res.ok) {
@@ -125,8 +155,8 @@ export default function CategoriesPage() {
         return res.json();
       } else {
         const res = await fetch(`/api/categories?id=${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: data.name, color: data.color }),
         });
         if (!res.ok) {
@@ -137,15 +167,19 @@ export default function CategoriesPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
       setOpenDialog(false);
       setEditingCategory(null);
-      setFormData({ name: '', color: '#3B82F6', image: null });
+      setFormData({ name: "", color: "#3B82F6", image: null });
       setImagePreview(null);
-      setSnackbar({ open: true, message: 'Category updated successfully!', severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: "Category updated successfully!",
+        severity: "success",
+      });
     },
     onError: (error: Error) => {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
+      setSnackbar({ open: true, message: error.message, severity: "error" });
     },
   });
 
@@ -153,7 +187,7 @@ export default function CategoriesPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/categories?id=${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       if (!res.ok) {
         const data = await res.json();
@@ -162,12 +196,16 @@ export default function CategoriesPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
       setDeleteConfirm(null);
-      setSnackbar({ open: true, message: 'Category deleted successfully!', severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: "Category deleted successfully!",
+        severity: "success",
+      });
     },
     onError: (error: Error) => {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
+      setSnackbar({ open: true, message: error.message, severity: "error" });
     },
   });
 
@@ -187,7 +225,11 @@ export default function CategoriesPage() {
 
   const handleSubmit = () => {
     if (!formData.name.trim()) {
-      setSnackbar({ open: true, message: 'Please enter a category name', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "Please enter a category name",
+        severity: "error",
+      });
       return;
     }
 
@@ -211,9 +253,16 @@ export default function CategoriesPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <CategoryIcon sx={{ fontSize: 32, color: 'primary.main', mr: 1 }} />
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <CategoryIcon sx={{ fontSize: 32, color: "primary.main", mr: 1 }} />
           <Typography variant="h4" fontWeight="bold">
             Categories
           </Typography>
@@ -223,10 +272,10 @@ export default function CategoriesPage() {
           startIcon={<AddIcon />}
           onClick={() => {
             setEditingCategory(null);
-            setFormData({ name: '', color: '#3B82F6' });
+            setFormData({ name: "", color: "#3B82F6", image: null });
             setOpenDialog(true);
           }}
-          sx={{ backgroundColor: '#1E40AF' }}
+          sx={{ backgroundColor: "#1E40AF" }}
         >
           Add Category
         </Button>
@@ -235,17 +284,25 @@ export default function CategoriesPage() {
       {/* Categories Grid */}
       <Grid container spacing={3}>
         {isLoading ? (
-          Array(4).fill(0).map((_, i) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
-              <Card sx={{ borderRadius: 3, p: 3 }}>
-                <Box sx={{ height: 80, backgroundColor: '#E2E8F0', borderRadius: 2 }} />
-              </Card>
-            </Grid>
-          ))
+          Array(4)
+            .fill(0)
+            .map((_, i) => (
+              <Grid key={i}>
+                <Card sx={{ borderRadius: 3, p: 3 }}>
+                  <Box
+                    sx={{
+                      height: 80,
+                      backgroundColor: "#E2E8F0",
+                      borderRadius: 2,
+                    }}
+                  />
+                </Card>
+              </Grid>
+            ))
         ) : categories.length === 0 ? (
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
-              <CategoryIcon sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
+          <Grid>
+            <Card sx={{ borderRadius: 3, p: 4, textAlign: "center" }}>
+              <CategoryIcon sx={{ fontSize: 64, color: "#CBD5E1", mb: 2 }} />
               <Typography variant="h6" color="text.secondary">
                 No categories yet
               </Typography>
@@ -263,13 +320,13 @@ export default function CategoriesPage() {
           </Grid>
         ) : (
           categories.map((category) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={category._id}>
+            <Grid key={category._id}>
               <Card
                 sx={{
                   borderRadius: 3,
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
                     boxShadow: 3,
                   },
                 }}
@@ -280,23 +337,23 @@ export default function CategoriesPage() {
                     src={category.image}
                     alt={category.name}
                     sx={{
-                      width: '100%',
+                      width: "100%",
                       height: 180,
-                      objectFit: 'cover',
+                      objectFit: "cover",
                     }}
                   />
                 )}
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                     <Box
                       sx={{
                         width: 48,
                         height: 48,
                         borderRadius: 2,
-                        backgroundColor: category.color + '20',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        backgroundColor: category.color + "20",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         mr: 2,
                       }}
                     >
@@ -306,19 +363,19 @@ export default function CategoriesPage() {
                       {category.name}
                     </Typography>
                   </Box>
-                  
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+
+                  <Box sx={{ display: "flex", gap: 1 }}>
                     <IconButton
                       size="small"
                       onClick={() => handleEdit(category)}
-                      sx={{ color: '#3B82F6' }}
+                      sx={{ color: "#3B82F6" }}
                     >
                       <EditIcon />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => handleDelete(category)}
-                      sx={{ color: '#EF4444' }}
+                      sx={{ color: "#EF4444" }}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -331,18 +388,27 @@ export default function CategoriesPage() {
       </Grid>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingCategory ? "Edit Category" : "Add New Category"}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
               fullWidth
               label="Category Name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               sx={{ mb: 3 }}
             />
-            
+
             {/* Image Upload */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -354,9 +420,9 @@ export default function CategoriesPage() {
                   src={imagePreview}
                   alt="Preview"
                   sx={{
-                    width: '100%',
+                    width: "100%",
                     height: 200,
-                    objectFit: 'cover',
+                    objectFit: "cover",
                     borderRadius: 2,
                     mb: 2,
                   }}
@@ -377,11 +443,11 @@ export default function CategoriesPage() {
                 />
               </Button>
             </Box>
-            
+
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               Color
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
               {COLORS.map((color) => (
                 <Box
                   key={color}
@@ -391,11 +457,14 @@ export default function CategoriesPage() {
                     height: 40,
                     borderRadius: 2,
                     backgroundColor: color,
-                    cursor: 'pointer',
-                    border: formData.color === color ? '3px solid #1E40AF' : '3px solid transparent',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
+                    cursor: "pointer",
+                    border:
+                      formData.color === color
+                        ? "3px solid #1E40AF"
+                        : "3px solid transparent",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      transform: "scale(1.1)",
                     },
                   }}
                 />
@@ -410,7 +479,7 @@ export default function CategoriesPage() {
             onClick={handleSubmit}
             disabled={createMutation.isPending || updateMutation.isPending}
           >
-            {editingCategory ? 'Update' : 'Add'}
+            {editingCategory ? "Update" : "Add"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -420,8 +489,8 @@ export default function CategoriesPage() {
         <DialogTitle>Delete Category?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete "{deleteConfirm?.name}"? Products in this category will
-            become uncategorized.
+            Are you sure you want to delete "{deleteConfirm?.name}"? Products in
+            this category will become uncategorized.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -429,7 +498,9 @@ export default function CategoriesPage() {
           <Button
             variant="contained"
             color="error"
-            onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm._id)}
+            onClick={() =>
+              deleteConfirm && deleteMutation.mutate(deleteConfirm._id)
+            }
             disabled={deleteMutation.isPending}
           >
             Delete
@@ -442,12 +513,12 @@ export default function CategoriesPage() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbar.message}
         </Alert>
@@ -455,4 +526,3 @@ export default function CategoriesPage() {
     </Box>
   );
 }
-

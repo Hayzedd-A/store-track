@@ -10,10 +10,12 @@ const productSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(100, 'Name too long'),
   categoryId: z.string().nullable().optional().default(null),
   sku: z.string().min(1, 'SKU is required').max(20, 'SKU too long'),
+  barcode: z.string().nullable().optional().default(null),
   price: z.number().min(0, 'Price must be positive'),
   cost: z.number().min(0, 'Cost must be positive'),
   quantity: z.number().min(0, 'Quantity must be positive').default(0),
   image: z.string().nullable().optional().default(null),
+  publicId: z.string().nullable().optional().default(null), // Added publicId to schema
   minStock: z.number().min(0, 'Min stock must be positive').default(5),
   shelfNo: z.string().nullable().optional().default(null),
   unitConfig: z.object({
@@ -33,6 +35,7 @@ async function parseProductFormData(req: NextRequest) {
   const name = formData.get('name')?.toString();
   const categoryId = formData.get('categoryId')?.toString() || null;
   const sku = formData.get('sku')?.toString();
+  const barcode = formData.get('barcode')?.toString() || null;
   const price = formData.get('price')?.toString();
   const cost = formData.get('cost')?.toString();
   const quantity = formData.get('quantity')?.toString();
@@ -47,6 +50,7 @@ async function parseProductFormData(req: NextRequest) {
     name,
     categoryId,
     sku,
+    barcode,
     price: price ? parseFloat(price) : undefined,
     cost: cost ? parseFloat(cost) : undefined,
     quantity: quantity ? parseInt(quantity) : 0,
@@ -81,6 +85,7 @@ export async function GET(req: NextRequest) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { sku: { $regex: search, $options: 'i' } },
+        { barcode: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -135,6 +140,7 @@ export async function POST(req: NextRequest) {
 
     let validatedData: any;
     let imageUrl: string | null = null;
+    let imagePublicId: string | null = null; // Declare imagePublicId
 
     if (contentType.includes('multipart/form-data')) {
       // Handle multipart form data with file
@@ -143,8 +149,9 @@ export async function POST(req: NextRequest) {
       if (formData.file && formData.file.size > 0) {
         try {
           const buffer = Buffer.from(await formData.file.arrayBuffer());
-          const result: any = await uploadImage(buffer, 'store-track/products');
+          const result: any = await uploadImage(buffer, 'store-track/products'); // Corrected call
           imageUrl = result.secure_url;
+          imagePublicId = result.public_id; // Assign public_id
         } catch (uploadError) {
           console.error('Image upload error:', uploadError);
           return NextResponse.json(
@@ -158,12 +165,14 @@ export async function POST(req: NextRequest) {
         name: formData.name,
         categoryId: formData.categoryId,
         sku: formData.sku,
+        barcode: formData.barcode,
         price: formData.price,
         cost: formData.cost,
         quantity: formData.quantity,
         minStock: formData.minStock,
         shelfNo: formData.shelfNo,
         image: imageUrl,
+        publicId: imagePublicId, // Store the publicId
         unitConfig: {
           saleUnit: formData.saleUnit || 'piece',
           restockUnit: formData.restockUnit || 'box',

@@ -9,6 +9,7 @@ import { z } from 'zod';
 const restockSchema = z.object({
   productId: z.string().min(1, 'Product ID is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
+  cost: z.number().min(0).nullable().optional().default(null),
   notes: z.string().nullable().optional().default(null),
 });
 
@@ -94,11 +95,21 @@ export async function POST(req: NextRequest) {
 
     const previousQty = product.quantity;
     const newQty = previousQty + validatedData.quantity;
+    const previousCost = product.cost;
+    const newCost = validatedData.cost !== null ? validatedData.cost : previousCost;
 
-    // Update product quantity
-    await Product.findByIdAndUpdate(validatedData.productId, {
+    // Build update object
+    const updateData: Record<string, unknown> = {
       quantity: newQty,
-    });
+    };
+    
+    // Update cost if provided (not null)
+    if (validatedData.cost !== null) {
+      updateData.cost = newCost;
+    }
+
+    // Update product quantity (and cost if provided)
+    await Product.findByIdAndUpdate(validatedData.productId, updateData);
 
     // Create stock history entry
     await StockHistory.create({
@@ -107,6 +118,7 @@ export async function POST(req: NextRequest) {
       quantityChange: validatedData.quantity,
       previousQty,
       newQty,
+      currentPrice: newCost,
       notes: validatedData.notes || `Restocked ${validatedData.quantity} ${product.unitConfig.restockUnit}`,
     });
 
@@ -117,6 +129,8 @@ export async function POST(req: NextRequest) {
         previousQty,
         newQty,
         addedQty: validatedData.quantity,
+        previousCost,
+        newCost,
       },
     });
   } catch (error) {
