@@ -10,8 +10,14 @@ import {
   Alert,
   useMediaQuery,
   useTheme,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
-import { PointOfSale as POSIcon } from "@mui/icons-material";
+import { 
+  PointOfSale as POSIcon, 
+  ViewModule as ViewModuleIcon, 
+  ViewList as ViewListIcon,
+} from "@mui/icons-material";
 import PageHeader from "@/app/components/ui/PageHeader";
 import ProductSearch from "@/app/components/pos/ProductSearch";
 import ProductGrid from "@/app/components/pos/ProductGrid";
@@ -60,6 +66,7 @@ export default function POSPage() {
   } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   /** Play a short confirmation beep via the Web Audio API */
   const playBeep = () => {
@@ -241,10 +248,29 @@ export default function POSPage() {
                 onCategoryChange={setSelectedCategory}
                 onBarcodeDetected={handleBarcodeDetected}
               />
+              <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+                <ToggleButtonGroup
+                  size="small"
+                  value={viewMode}
+                  exclusive
+                  onChange={(_, newMode) => {
+                    if (newMode !== null) setViewMode(newMode);
+                  }}
+                  aria-label="product view mode"
+                >
+                  <ToggleButton value="grid" aria-label="grid view">
+                    <ViewModuleIcon />
+                  </ToggleButton>
+                  <ToggleButton value="list" aria-label="list view">
+                    <ViewListIcon />
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
               <ProductGrid
                 products={filteredProducts}
                 isLoading={productsLoading}
                 onAddToCart={addToCart}
+                viewMode={viewMode}
               />
             </CardContent>
           </Card>

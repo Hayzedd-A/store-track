@@ -80,13 +80,8 @@ export default function EditProductDialog({
               fullWidth
               label="SKU"
               value={form.sku}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  sku: e.target.value.toUpperCase(),
-                })
-              }
-              required
+              disabled
+              helperText="SKU cannot be modified after creation"
             />
           </Grid>
           <Grid>

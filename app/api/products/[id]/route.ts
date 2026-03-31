@@ -117,22 +117,9 @@ export async function PUT(
       );
     }
 
-    // If SKU provided, ensure uniqueness (case-insensitive)
-    if (validated.sku) {
-      const existing = await Product.findOne({
-        sku: validated.sku.toUpperCase(),
-        _id: { $ne: id },
-      });
-      if (existing) {
-        return NextResponse.json(
-          { success: false, message: "Another product with this SKU exists" },
-          { status: 400 },
-        );
-      }
-      updateData.sku = validated.sku.toUpperCase();
-    }
-
     // Initialize updateData with validated fields (excluding image specific ones handled separately)
+    // We also delete sku to ensure it's immutable after creation
+    delete validated.sku;
     Object.assign(updateData, validated);
     delete updateData.imageRemoved; // Remove this flag from direct update
 

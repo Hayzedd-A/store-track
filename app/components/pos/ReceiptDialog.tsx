@@ -15,6 +15,7 @@ import {
   Receipt as ReceiptIcon,
 } from "@mui/icons-material";
 import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 interface CartItem {
   product: { name: string };
@@ -39,13 +40,25 @@ export default function ReceiptDialog({
   sale,
   onClose,
 }: ReceiptDialogProps) {
+  const { data: storeSettings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings");
+      if (!res.ok) return null;
+      return (await res.json()).data;
+    },
+    enabled: open, // only fetch if dialog is open
+  });
+
   const generateReceipt = () => {
     if (!sale) return "";
     const date = new Date().toLocaleString();
     return `
       <div style="font-family: monospace; padding: 20px; max-width: 300px; margin: 0 auto;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="margin: 0;">StoreTrack</h2>
+          <h2 style="margin: 0;">${storeSettings?.storeName || 'StoreTrack'}</h2>
+          ${storeSettings?.address ? `<p style="margin: 5px 0; font-size: 14px;">${storeSettings.address}</p>` : ''}
+          ${storeSettings?.phone ? `<p style="margin: 5px 0; font-size: 14px;">${storeSettings.phone}</p>` : ''}
           <p style="margin: 5px 0;">Stock Management System</p>
           <p style="margin: 5px 0; font-size: 12px;">${date}</p>
           <p style="margin: 5px 0; font-size: 12px;">Receipt #: ${sale.saleId.slice(-8).toUpperCase()}</p>

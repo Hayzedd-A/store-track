@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { Box, Grid, Typography, Alert } from "@mui/material";
 import { Dashboard as DashboardIcon } from "@mui/icons-material";
 import DashboardStatCards from "@/app/components/dashboard/DashboardStatCards";
-import SalesOverviewChart from "@/app/components/dashboard/SalesOverviewChart";
+import SalesCharts from "@/app/components/sales/SalesCharts";
 import RecentSalesList from "@/app/components/dashboard/RecentSalesList";
 import LowStockAlerts from "@/app/components/dashboard/LowStockAlerts";
 import QuickActions from "@/app/components/dashboard/QuickActions";
@@ -35,6 +35,18 @@ interface DashboardStats {
     name: string;
     quantity: number;
     minStock: number;
+  }>;
+  allSales: Array<{
+    _id: string;
+    totalAmount: number;
+    createdAt: string;
+    items: Array<{
+      productName: string;
+      quantity: number;
+      price: number;
+      cost: number;
+      subtotal: number;
+    }>;
   }>;
 }
 
@@ -87,6 +99,7 @@ async function fetchDashboardStats(): Promise<DashboardStats> {
     totalRevenue: salesData.summary?.totalRevenue || 0,
     recentSales: salesData.data?.slice(0, 5) || [],
     lowStockItems: lowStockData.data?.slice(0, 5) || [],
+    allSales: salesData.data || [],
   };
 }
 
@@ -112,20 +125,62 @@ export default function DashboardPage() {
         fullDate: date.toISOString().split("T")[0],
         sales: 0,
         revenue: 0,
+        cost: 0,
+        profit: 0,
       };
     });
 
-    (stats?.recentSales || []).forEach((sale) => {
+    (stats?.allSales || []).forEach((sale) => {
       const date = new Date(sale.createdAt).toISOString().split("T")[0];
       const day = last7Days.find((d) => d.fullDate === date);
       if (day) {
+        let dailyCost = 0;
+        let dailyProfit = 0;
+        sale.items.forEach((item) => {
+          dailyCost += item.cost * item.quantity;
+          dailyProfit += (item.price - item.cost) * item.quantity;
+        });
+
         day.sales += 1;
         day.revenue += sale.totalAmount;
+        day.cost += dailyCost;
+        day.profit += dailyProfit;
       }
     });
 
     return last7Days;
-  }, [stats?.recentSales]);
+  }, [stats?.allSales]);
+
+  const pieData = useMemo(() => {
+    const productSales: Record<
+      string,
+      { name: string; quantity: number; revenue: number }
+    > = {};
+
+    (stats?.allSales || []).forEach((sale) => {
+      sale.items.forEach((item) => {
+        if (!productSales[item.productName]) {
+          productSales[item.productName] = {
+            name: item.productName,
+            quantity: 0,
+            revenue: 0,
+          };
+        }
+        productSales[item.productName].quantity += item.quantity;
+        productSales[item.productName].revenue += item.subtotal;
+      });
+    });
+
+    return Object.values(productSales)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+      .map((product, index) => ({
+        name: product.name,
+        revenue: product.revenue,
+        quantity: product.quantity,
+        color: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][index],
+      }));
+  }, [stats?.allSales]);
 
   if (error) {
     return (
@@ -153,10 +208,7 @@ export default function DashboardPage() {
         todayProfit={stats?.todayProfit}
       />
 
-      <Typography variant="h5" fontWeight="600" sx={{ mt: 4, mb: 2 }}>
-        Sales Overview (Last 7 Days)
-      </Typography>
-      <SalesOverviewChart data={chartData} />
+      <SalesCharts salesChartData={chartData} pieData={pieData} />
 
       <Grid container spacing={3}>
         <Grid>

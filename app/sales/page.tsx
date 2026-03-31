@@ -23,7 +23,6 @@ import {
   DialogActions,
   Chip,
   IconButton,
-  // InputAdornment,
   Divider,
 } from "@mui/material";
 import {
@@ -34,18 +33,7 @@ import {
   TrendingUp as TrendingUpIcon,
   AttachMoney as MoneyIcon,
 } from "@mui/icons-material";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import SalesCharts from "@/app/components/sales/SalesCharts";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ISale } from "@/types";
 
@@ -86,17 +74,11 @@ export default function SalesPage() {
     0,
   );
 
-  const formalizeCurrency = (amount: number) => {
-    if (amount >= 1e6) return `${(amount / 1e6).toFixed(1)}M`;
-    if (amount >= 1e3) return `${(amount / 1e3).toFixed(1)}K`;
-    return formatCurrency(amount);
-  };
-
   // Calculate chart data
   const salesChartData = useMemo(() => {
     const dailySales: Record<
       string,
-      { date: string; sales: number; revenue: number }
+      { date: string; sales: number; revenue: number; cost: number; profit: number }
     > = {};
 
     sales.forEach((sale) => {
@@ -106,14 +88,25 @@ export default function SalesPage() {
       });
 
       if (!dailySales[date]) {
-        dailySales[date] = { date, sales: 0, revenue: 0 };
+        dailySales[date] = { date, sales: 0, revenue: 0, cost: 0, profit: 0 };
       }
+
+      let dailyCost = 0;
+      let dailyProfit = 0;
+      sale.items.forEach((item) => {
+        dailyCost += item.cost * item.quantity;
+        dailyProfit += (item.price - item.cost) * item.quantity;
+      });
 
       dailySales[date].sales += 1;
       dailySales[date].revenue += sale.totalAmount;
+      dailySales[date].cost += dailyCost;
+      dailySales[date].profit += dailyProfit;
     });
 
-    return Object.values(dailySales).slice(-7);
+    return Object.values(dailySales).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
   }, [sales]);
 
   // Calculate top products
@@ -145,7 +138,8 @@ export default function SalesPage() {
   // Pie chart data
   const pieData = topProducts.map((product, index) => ({
     name: product.name,
-    value: product.revenue,
+    revenue: product.revenue,
+    quantity: product.quantity,
     color: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][index],
   }));
 
@@ -414,62 +408,7 @@ export default function SalesPage() {
       </Card>
 
       {/* Charts Row */}
-      <Grid container spacing={3} columns={2} sx={{ mb: 3 }}>
-        <Grid size={1}>
-          <Card sx={{ borderRadius: 3, p: 2 }}>
-            <Typography variant="h6" fontWeight="600" sx={{ mb: 2 }}>
-              Sales Trend (Last 7 Days)
-            </Typography>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={salesChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis tickFormatter={formalizeCurrency} />
-                <Tooltip
-                  formatter={(value, name) => {
-                    const safeValue = Number(value ?? 0);
-
-                    return [
-                      name === "revenue"
-                        ? formatCurrency(safeValue)
-                        : safeValue,
-                      name === "revenue" ? "Revenue" : "Sales",
-                    ];
-                  }}
-                />
-                <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
-        <Grid size={1}>
-          <Card sx={{ borderRadius: 3, p: 2 }}>
-            <Typography variant="h6" fontWeight="600" sx={{ mb: 2 }}>
-              Top Products
-            </Typography>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name?.substring(0, 10)}... ${(percent || 0 * 100).toFixed(0)}%`
-                  }
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
-      </Grid>
+      <SalesCharts salesChartData={salesChartData} pieData={pieData} />
 
       {/* Top Products Table */}
       <Card sx={{ borderRadius: 3, mb: 3 }}>

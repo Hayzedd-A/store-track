@@ -1,50 +1,56 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import Product from '@/models/Product';
-import StockHistory from '@/models/StockHistory';
-import { uploadImage } from '@/lib/cloudinary';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
+import Product from "@/models/Product";
+import StockHistory from "@/models/StockHistory";
+import { uploadImage } from "@/lib/cloudinary";
+import { z } from "zod";
+import { generateBarcode } from "@/lib/utils";
 
 // Validation schema
 const productSchema = z.object({
-  name: z.string().min(1, 'Product name is required').max(100, 'Name too long'),
+  name: z.string().min(1, "Product name is required").max(100, "Name too long"),
   categoryId: z.string().nullable().optional().default(null),
-  sku: z.string().min(1, 'SKU is required').max(20, 'SKU too long'),
+  sku: z.string().min(1, "SKU is required").max(20, "SKU too long"),
   barcode: z.string().nullable().optional().default(null),
-  price: z.number().min(0, 'Price must be positive'),
-  cost: z.number().min(0, 'Cost must be positive'),
-  quantity: z.number().min(0, 'Quantity must be positive').default(0),
+  price: z.number().min(0, "Price must be positive"),
+  cost: z.number().min(0, "Cost must be positive"),
+  quantity: z.number().min(0, "Quantity must be positive").default(0),
   image: z.string().nullable().optional().default(null),
   publicId: z.string().nullable().optional().default(null), // Added publicId to schema
-  minStock: z.number().min(0, 'Min stock must be positive').default(5),
+  minStock: z.number().min(0, "Min stock must be positive").default(5),
   shelfNo: z.string().nullable().optional().default(null),
-  unitConfig: z.object({
-    saleUnit: z.string().min(1, 'Sale unit is required'),
-    restockUnit: z.string().min(1, 'Restock unit is required'),
-    unitsPerRestock: z.number().min(1, 'Units per restock must be at least 1'),
-  }).optional().default({
-    saleUnit: 'piece',
-    restockUnit: 'box',
-    unitsPerRestock: 12,
-  }),
+  unitConfig: z
+    .object({
+      saleUnit: z.string().min(1, "Sale unit is required"),
+      restockUnit: z.string().min(1, "Restock unit is required"),
+      unitsPerRestock: z
+        .number()
+        .min(1, "Units per restock must be at least 1"),
+    })
+    .optional()
+    .default({
+      saleUnit: "piece",
+      restockUnit: "box",
+      unitsPerRestock: 12,
+    }),
 });
 
 // Helper function to parse multipart form data
 async function parseProductFormData(req: NextRequest) {
   const formData = await req.formData();
-  const name = formData.get('name')?.toString();
-  const categoryId = formData.get('categoryId')?.toString() || null;
-  const sku = formData.get('sku')?.toString();
-  const barcode = formData.get('barcode')?.toString() || null;
-  const price = formData.get('price')?.toString();
-  const cost = formData.get('cost')?.toString();
-  const quantity = formData.get('quantity')?.toString();
-  const minStock = formData.get('minStock')?.toString();
-  const shelfNo = formData.get('shelfNo')?.toString() || null;
-  const saleUnit = formData.get('saleUnit')?.toString();
-  const restockUnit = formData.get('restockUnit')?.toString();
-  const unitsPerRestock = formData.get('unitsPerRestock')?.toString();
-  const file = formData.get('image') as File | null;
+  const name = formData.get("name")?.toString();
+  const categoryId = formData.get("categoryId")?.toString() || null;
+  const sku = formData.get("sku")?.toString();
+  const barcode = formData.get("barcode")?.toString() || null;
+  const price = formData.get("price")?.toString();
+  const cost = formData.get("cost")?.toString();
+  const quantity = formData.get("quantity")?.toString();
+  const minStock = formData.get("minStock")?.toString();
+  const shelfNo = formData.get("shelfNo")?.toString() || null;
+  const saleUnit = formData.get("saleUnit")?.toString();
+  const restockUnit = formData.get("restockUnit")?.toString();
+  const unitsPerRestock = formData.get("unitsPerRestock")?.toString();
+  const file = formData.get("image") as File | null;
 
   return {
     name,
@@ -69,11 +75,11 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
 
     const { searchParams } = new URL(req.url);
-    const categoryId = searchParams.get('categoryId');
-    const search = searchParams.get('search');
-    const lowStock = searchParams.get('lowStock');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const categoryId = searchParams.get("categoryId");
+    const search = searchParams.get("search");
+    const lowStock = searchParams.get("lowStock");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
 
     const query: Record<string, unknown> = {};
 
@@ -83,21 +89,21 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } },
-        { barcode: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } },
+        { barcode: { $regex: search, $options: "i" } },
       ];
     }
 
-    if (lowStock === 'true') {
-      query.$expr = { $lte: ['$quantity', '$minStock'] };
+    if (lowStock === "true") {
+      query.$expr = { $lte: ["$quantity", "$minStock"] };
     }
 
     const skip = (page - 1) * limit;
 
     const [products, total] = await Promise.all([
       Product.find(query)
-        .populate('categoryId', 'name color')
+        .populate("categoryId", "name color")
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -107,13 +113,21 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: products.map(product => ({
+      data: products.map((product) => ({
         ...product,
         _id: product._id.toString(),
-        categoryId: product.categoryId ? {
-          ...(product.categoryId as { _id: { toString(): string }; name: string; color: string }),
-          _id: (product.categoryId as { _id: { toString(): string } })._id.toString(),
-        } : null,
+        categoryId: product.categoryId
+          ? {
+              ...(product.categoryId as {
+                _id: { toString(): string };
+                name: string;
+                color: string;
+              }),
+              _id: (
+                product.categoryId as { _id: { toString(): string } }
+              )._id.toString(),
+            }
+          : null,
       })),
       pagination: {
         page,
@@ -123,10 +137,10 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Get products error:', error);
+    console.error("Get products error:", error);
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch products' },
-      { status: 500 }
+      { success: false, message: "Failed to fetch products" },
+      { status: 500 },
     );
   }
 }
@@ -136,27 +150,27 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
 
-    const contentType = req.headers.get('content-type') || '';
+    const contentType = req.headers.get("content-type") || "";
 
     let validatedData: any;
     let imageUrl: string | null = null;
     let imagePublicId: string | null = null; // Declare imagePublicId
 
-    if (contentType.includes('multipart/form-data')) {
+    if (contentType.includes("multipart/form-data")) {
       // Handle multipart form data with file
       const formData = await parseProductFormData(req);
-      
+
       if (formData.file && formData.file.size > 0) {
         try {
           const buffer = Buffer.from(await formData.file.arrayBuffer());
-          const result: any = await uploadImage(buffer, 'store-track/products'); // Corrected call
+          const result: any = await uploadImage(buffer, "store-track/products"); // Corrected call
           imageUrl = result.secure_url;
           imagePublicId = result.public_id; // Assign public_id
         } catch (uploadError) {
-          console.error('Image upload error:', uploadError);
+          console.error("Image upload error:", uploadError);
           return NextResponse.json(
-            { success: false, message: 'Failed to upload image' },
-            { status: 400 }
+            { success: false, message: "Failed to upload image" },
+            { status: 400 },
           );
         }
       }
@@ -165,7 +179,7 @@ export async function POST(req: NextRequest) {
         name: formData.name,
         categoryId: formData.categoryId,
         sku: formData.sku,
-        barcode: formData.barcode,
+        barcode: formData.barcode || generateBarcode(),
         price: formData.price,
         cost: formData.cost,
         quantity: formData.quantity,
@@ -174,8 +188,8 @@ export async function POST(req: NextRequest) {
         image: imageUrl,
         publicId: imagePublicId, // Store the publicId
         unitConfig: {
-          saleUnit: formData.saleUnit || 'piece',
-          restockUnit: formData.restockUnit || 'box',
+          saleUnit: formData.saleUnit || "piece",
+          restockUnit: formData.restockUnit || "box",
           unitsPerRestock: formData.unitsPerRestock || 12,
         },
       });
@@ -186,12 +200,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate SKU
-    const existing = await Product.findOne({ sku: validatedData.sku.toUpperCase() });
+    const existing = await Product.findOne({
+      $or: [
+        { sku: validatedData.sku.toUpperCase() },
+        { barcode: validatedData.barcode },
+      ],
+    });
 
     if (existing) {
       return NextResponse.json(
-        { success: false, message: 'Product with this SKU already exists' },
-        { status: 400 }
+        {
+          success: false,
+          message: "Product with this SKU or barcode already exists",
+        },
+        { status: 400 },
       );
     }
 
@@ -204,11 +226,11 @@ export async function POST(req: NextRequest) {
     if (validatedData.quantity > 0) {
       await StockHistory.create({
         productId: product._id,
-        changeType: 'restock',
+        changeType: "restock",
         quantityChange: validatedData.quantity,
         previousQty: 0,
         newQty: validatedData.quantity,
-        notes: 'Initial stock',
+        notes: "Initial stock",
       });
     }
 
@@ -220,23 +242,21 @@ export async function POST(req: NextRequest) {
           _id: product._id.toString(),
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
-    console.error('Create product error:', error);
+    console.error("Create product error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, errors: error.flatten().fieldErrors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
-      { success: false, message: 'Failed to create product' },
-      { status: 500 }
+      { success: false, message: "Failed to create product" },
+      { status: 500 },
     );
   }
 }
-
-

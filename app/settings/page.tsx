@@ -1,30 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  TextField,
-  Button,
   Grid,
   Divider,
   Alert,
   Snackbar,
+  CircularProgress,
 } from "@mui/material";
-import {
-  Store as StoreIcon,
-  Save as SaveIcon,
-  Security as SecurityIcon,
-} from "@mui/icons-material";
+import { Store as StoreIcon } from "@mui/icons-material";
+import StoreInfoForm from "@/app/components/settings/StoreInfoForm";
+import ChangePasswordForm from "@/app/components/settings/ChangePasswordForm";
+import SkuSettingsForm from "@/app/components/settings/SkuSettingsForm";
 
 export default function SettingsPage() {
+  const queryClient = useQueryClient();
+
   const [storeSettings, setStoreSettings] = useState({
-    storeName: "My Store",
+    storeName: "",
     address: "",
     phone: "",
     email: "",
+    skuSettings: {
+      method: "RANDOM" as "RANDOM" | "SEQUENTIAL" | "CATEGORY_PREFIX",
+      prefix: "",
+    },
   });
 
   const [passwords, setPasswords] = useState({
@@ -43,47 +48,125 @@ export default function SettingsPage() {
     severity: "success",
   });
 
+  const showMessage = (
+    message: string,
+    severity: "success" | "error" = "success",
+  ) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings");
+      if (!res.ok) throw new Error("Failed to fetch settings");
+      const json = await res.json();
+      return json.data;
+    },
+  });
+
+  // Update local state when data is fetched
+  useEffect(() => {
+    if (data) {
+      setStoreSettings({
+        storeName: data.storeName || "",
+        address: data.address || "",
+        phone: data.phone || "",
+        email: data.email || "",
+        skuSettings: data.skuSettings || { method: "RANDOM", prefix: "" },
+      });
+    }
+  }, [data]);
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (newSettings: typeof storeSettings) => {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSettings),
+      });
+      const resData = await res.json();
+      if (!res.ok)
+        throw new Error(resData.message || "Failed to save settings");
+      return resData;
+    },
+    onSuccess: () => {
+      showMessage("Store settings saved successfully!");
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (error: any) => {
+      showMessage(error.message || "Failed to save settings", "error");
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (pwdData: typeof passwords) => {
+      const res = await fetch("/api/auth/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: pwdData.currentPassword,
+          newPassword: pwdData.newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to change password");
+      return data;
+    },
+    onSuccess: () => {
+      showMessage("Password changed successfully!");
+      setPasswords({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    },
+    onError: (error: any) => {
+      showMessage(error.message || "Failed to change password", "error");
+    },
+  });
+
+  const handleStoreSettingsChange = (field: string, value: string) => {
+    setStoreSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSkuSettingsChange = (field: string, value: string) => {
+    setStoreSettings((prev) => ({
+      ...prev,
+      skuSettings: {
+        ...prev.skuSettings,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswords((prev) => ({ ...prev, [field]: value }));
+  };
+
   const handleSaveStoreSettings = () => {
-    // In production, this would save to the database
-    setSnackbar({
-      open: true,
-      message: "Store settings saved successfully!",
-      severity: "success",
-    });
+    updateSettingsMutation.mutate(storeSettings);
   };
 
   const handleChangePassword = () => {
     if (passwords.newPassword !== passwords.confirmPassword) {
-      setSnackbar({
-        open: true,
-        message: "New passwords do not match!",
-        severity: "error",
-      });
+      showMessage("New passwords do not match!", "error");
       return;
     }
-
     if (passwords.newPassword.length < 6) {
-      setSnackbar({
-        open: true,
-        message: "Password must be at least 6 characters!",
-        severity: "error",
-      });
+      showMessage("Password must be at least 6 characters!", "error");
       return;
     }
-
-    // In production, this would change the password
-    setSnackbar({
-      open: true,
-      message: "Password changed successfully!",
-      severity: "success",
-    });
-
-    setPasswords({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    changePasswordMutation.mutate(passwords);
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -97,153 +180,32 @@ export default function SettingsPage() {
       <Grid container spacing={3}>
         {/* Store Settings */}
         <Grid>
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" fontWeight="600" sx={{ mb: 3 }}>
-                Store Information
-              </Typography>
+          <StoreInfoForm
+            settings={storeSettings}
+            onChange={handleStoreSettingsChange}
+            onSave={handleSaveStoreSettings}
+            isLoading={updateSettingsMutation.isPending}
+          />
+        </Grid>
 
-              <Grid container spacing={2}>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="Store Name"
-                    value={storeSettings.storeName}
-                    onChange={(e) =>
-                      setStoreSettings({
-                        ...storeSettings,
-                        storeName: e.target.value,
-                      })
-                    }
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="Address"
-                    value={storeSettings.address}
-                    onChange={(e) =>
-                      setStoreSettings({
-                        ...storeSettings,
-                        address: e.target.value,
-                      })
-                    }
-                    multiline
-                    rows={2}
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    value={storeSettings.phone}
-                    onChange={(e) =>
-                      setStoreSettings({
-                        ...storeSettings,
-                        phone: e.target.value,
-                      })
-                    }
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    value={storeSettings.email}
-                    onChange={(e) =>
-                      setStoreSettings({
-                        ...storeSettings,
-                        email: e.target.value,
-                      })
-                    }
-                  />
-                </Grid>
-              </Grid>
-
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveStoreSettings}
-                sx={{ mt: 3, backgroundColor: "#1E40AF" }}
-              >
-                Save Settings
-              </Button>
-            </CardContent>
-          </Card>
+        {/* SKU Generation Settings */}
+        <Grid>
+          <SkuSettingsForm
+            settings={storeSettings.skuSettings}
+            onChange={handleSkuSettingsChange}
+            onSave={handleSaveStoreSettings}
+            isLoading={updateSettingsMutation.isPending}
+          />
         </Grid>
 
         {/* Password Change */}
         <Grid>
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-                <SecurityIcon sx={{ mr: 1, color: "primary.main" }} />
-                <Typography variant="h6" fontWeight="600">
-                  Change Password
-                </Typography>
-              </Box>
-
-              <Grid container spacing={2}>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="Current Password"
-                    type="password"
-                    value={passwords.currentPassword}
-                    onChange={(e) =>
-                      setPasswords({
-                        ...passwords,
-                        currentPassword: e.target.value,
-                      })
-                    }
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="New Password"
-                    type="password"
-                    value={passwords.newPassword}
-                    onChange={(e) =>
-                      setPasswords({
-                        ...passwords,
-                        newPassword: e.target.value,
-                      })
-                    }
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    fullWidth
-                    label="Confirm New Password"
-                    type="password"
-                    value={passwords.confirmPassword}
-                    onChange={(e) =>
-                      setPasswords({
-                        ...passwords,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                  />
-                </Grid>
-              </Grid>
-
-              <Button
-                variant="contained"
-                startIcon={<SecurityIcon />}
-                onClick={handleChangePassword}
-                sx={{ mt: 3, backgroundColor: "#1E40AF" }}
-                disabled={
-                  !passwords.currentPassword ||
-                  !passwords.newPassword ||
-                  !passwords.confirmPassword
-                }
-              >
-                Change Password
-              </Button>
-            </CardContent>
-          </Card>
+          <ChangePasswordForm
+            passwords={passwords}
+            onChange={handlePasswordChange}
+            onSubmit={handleChangePassword}
+            isLoading={changePasswordMutation.isPending}
+          />
         </Grid>
 
         {/* App Info */}
@@ -256,7 +218,7 @@ export default function SettingsPage() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 StoreTrack is a complete stock management and point of sale
                 system designed for markets and small businesses. Built with
-                Next.js 16, MongoDB, and Material UI.
+                Next.js, MongoDB, and Material UI.
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Typography variant="body2" color="text.secondary">
@@ -265,47 +227,6 @@ export default function SettingsPage() {
               <Typography variant="body2" color="text.secondary">
                 Features: Inventory Management, POS, Sales Tracking, Reports
               </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Environment Info */}
-        <Grid>
-          <Card
-            sx={{
-              borderRadius: 3,
-              backgroundColor: "#FEF3C7",
-              border: "1px solid #FCD34D",
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Typography
-                variant="h6"
-                fontWeight="600"
-                sx={{ mb: 2, color: "#92400E" }}
-              >
-                Environment Variables
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 2, color: "#92400E" }}>
-                Make sure these variables are set in your .env.local file:
-              </Typography>
-              <Box
-                component="pre"
-                sx={{
-                  backgroundColor: "rgba(0,0,0,0.1)",
-                  p: 2,
-                  borderRadius: 2,
-                  overflow: "auto",
-                  fontSize: "0.85rem",
-                }}
-              >
-                {`MONGODB_URI=your_mongodb_connection_string
-NEXTAUTH_SECRET=your_secret_key
-NEXTAUTH_URL=http://localhost:3000
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret`}
-              </Box>
             </CardContent>
           </Card>
         </Grid>

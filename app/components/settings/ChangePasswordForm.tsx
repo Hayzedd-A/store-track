@@ -21,12 +21,14 @@ interface ChangePasswordFormProps {
   passwords: Passwords;
   onChange: (field: keyof Passwords, value: string) => void;
   onSubmit: () => void;
+  isLoading?: boolean;
 }
 
 export default function ChangePasswordForm({
   passwords,
   onChange,
   onSubmit,
+  isLoading,
 }: ChangePasswordFormProps) {
   const isDisabled =
     !passwords.currentPassword ||
@@ -75,10 +77,10 @@ export default function ChangePasswordForm({
           variant="contained"
           startIcon={<SecurityIcon />}
           onClick={onSubmit}
-          disabled={isDisabled}
+          disabled={isDisabled || isLoading}
           sx={{ mt: 3, backgroundColor: "#1E40AF" }}
         >
-          Change Password
+          {isLoading ? "Changing..." : "Change Password"}
         </Button>
       </CardContent>
     </Card>

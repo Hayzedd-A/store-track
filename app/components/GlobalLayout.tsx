@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Drawer,
@@ -59,6 +60,15 @@ export default function GlobalLayout({ children }: GlobalLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+  const { data: storeSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await fetch('/api/settings');
+      if (!res.ok) return null;
+      return (await res.json()).data;
+    },
+  });
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -95,7 +105,7 @@ export default function GlobalLayout({ children }: GlobalLayoutProps) {
           color="primary.main"
           sx={{ display: { xs: 'none', sm: 'block' } }}
         >
-          StoreTrack
+          {storeSettings?.storeName || 'StoreTrack'}
         </Typography>
         {isMobile && (
           <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>

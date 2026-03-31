@@ -22,12 +22,14 @@ interface StoreInfoFormProps {
   settings: StoreSettings;
   onChange: (field: keyof StoreSettings, value: string) => void;
   onSave: () => void;
+  isLoading?: boolean;
 }
 
 export default function StoreInfoForm({
   settings,
   onChange,
   onSave,
+  isLoading,
 }: StoreInfoFormProps) {
   return (
     <Card sx={{ borderRadius: 3 }}>
@@ -79,9 +81,10 @@ export default function StoreInfoForm({
           variant="contained"
           startIcon={<SaveIcon />}
           onClick={onSave}
+          disabled={isLoading}
           sx={{ mt: 3, backgroundColor: "#1E40AF" }}
         >
-          Save Settings
+          {isLoading ? "Saving..." : "Save Settings"}
         </Button>
       </CardContent>
     </Card>

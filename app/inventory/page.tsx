@@ -12,10 +12,6 @@ import {
   InputAdornment,
   IconButton,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Grid,
   MenuItem,
   FormControl,
@@ -46,6 +42,7 @@ import {
 import EditProductDialog from "../components/inventory/EditProductDialog";
 import SnackbarAlert from "../components/ui/SnackbarAlert";
 import RestockDialog from "../components/inventory/RestockDialog";
+import AddProductDialog from "../components/inventory/AddProductDialog";
 
 interface Product {
   _id: string;
@@ -91,12 +88,6 @@ export interface FormProduct {
   currentPublicId?: string | null;
   newImageFile?: File | null;
   imageRemoved?: boolean;
-}
-
-interface Category {
-  _id: string;
-  name: string;
-  color: string;
 }
 
 // Form validation schema would go here with Zod
@@ -323,17 +314,17 @@ export default function InventoryPage() {
     }));
   };
 
-  const handleAddProduct = () => {
-    if (!addForm.name || !addForm.sku || !addForm.price || !addForm.cost) {
-      setSnackbar({
-        open: true,
-        message: "Please fill in all required fields",
-        severity: "error",
-      });
-      return;
-    }
-    createProductMutation.mutate(addForm);
-  };
+  // const handleAddProduct = () => {
+  //   if (!addForm.name || !addForm.sku || !addForm.price || !addForm.cost) {
+  //     setSnackbar({
+  //       open: true,
+  //       message: "Please fill in all required fields",
+  //       severity: "error",
+  //     });
+  //     return;
+  //   }
+  //   createProductMutation.mutate(addForm);
+  // };
 
   const handleRestock = () => {
     if (!selectedProduct || !restockForm.quantity) {
@@ -706,225 +697,25 @@ export default function InventoryPage() {
       </Card>
 
       {/* Add Product Dialog */}
-      <Dialog
+      <AddProductDialog
         open={openAddDialog}
+        form={addForm}
+        imagePreview={imagePreview}
+        categories={categories || []}
+        isLoading={createProductMutation.isPending}
+        onChange={(field, value) => {
+          setAddForm((prev) => ({
+            ...prev,
+            [field]: value,
+          }));
+        }}
+        onImageChange={(file) => {
+          setAddForm((prev) => ({ ...prev, image: file }));
+          setImagePreview(URL.createObjectURL(file));
+        }}
         onClose={() => setOpenAddDialog(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Add New Product</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Product Name"
-                value={addForm.name}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, name: e.target.value })
-                }
-                required
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="SKU"
-                value={addForm.sku}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, sku: e.target.value.toUpperCase() })
-                }
-                required
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Barcode (optional)"
-                value={addForm.barcode || ""}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, barcode: e.target.value })
-                }
-                placeholder="Scan or enter barcode"
-              />
-            </Grid>
-
-            {/* Image Upload */}
-            <Grid>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Product Image
-              </Typography>
-              {imagePreview && (
-                <Box
-                  component="img"
-                  src={imagePreview}
-                  alt="Preview"
-                  sx={{
-                    width: "100%",
-                    maxWidth: 300,
-                    height: 200,
-                    objectFit: "cover",
-                    borderRadius: 2,
-                    mb: 2,
-                  }}
-                />
-              )}
-              <Button variant="outlined" component="label" fullWidth>
-                Upload Product Image
-                <input
-                  hidden
-                  accept="image/*"
-                  type="file"
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setAddForm({ ...addForm, image: file });
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setImagePreview(reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </Button>
-            </Grid>
-
-            <Grid>
-              <TextField
-                fullWidth
-                label="Price"
-                type="number"
-                value={addForm.price}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, price: e.target.value })
-                }
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">₦</InputAdornment>
-                  ),
-                }}
-                required
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Cost"
-                type="number"
-                value={addForm.cost}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, cost: e.target.value })
-                }
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">₦</InputAdornment>
-                  ),
-                }}
-                required
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Initial Quantity"
-                type="number"
-                value={addForm.quantity}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, quantity: e.target.value })
-                }
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Min Stock"
-                type="number"
-                value={addForm.minStock}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, minStock: e.target.value })
-                }
-              />
-            </Grid>
-            <Grid>
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={addForm.categoryId}
-                  label="Category"
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, categoryId: e.target.value })
-                  }
-                >
-                  <MenuItem value="">No Category</MenuItem>
-                  {categories.map((cat: Category) => (
-                    <MenuItem key={cat._id} value={cat._id}>
-                      {cat.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Shelf Number"
-                value={addForm.shelfNo}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, shelfNo: e.target.value })
-                }
-                placeholder="e.g., A1, B2"
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Sale Unit"
-                value={addForm.saleUnit}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, saleUnit: e.target.value })
-                }
-                placeholder="piece, kg, pack"
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Restock Unit"
-                value={addForm.restockUnit}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, restockUnit: e.target.value })
-                }
-                placeholder="box, crate, dozen"
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                fullWidth
-                label="Units per Restock"
-                type="number"
-                value={addForm.unitsPerRestock}
-                onChange={(e) =>
-                  setAddForm({
-                    ...addForm,
-                    unitsPerRestock: Number(e.target.value),
-                  })
-                }
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleAddProduct}
-            disabled={createProductMutation.isPending}
-          >
-            {createProductMutation.isPending ? "Adding..." : "Add Product"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSubmit={() => createProductMutation.mutate(addForm)}
+      />
 
       {/* Edit Product Dialog */}
       <EditProductDialog
