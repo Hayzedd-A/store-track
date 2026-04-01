@@ -4,12 +4,13 @@ import { Grid, Card, Typography, Chip, Box } from "@mui/material";
 import { formatCurrency } from "@/lib/utils";
 import Image from "next/image";
 import { IProduct } from "@/types";
+import { useEffect, useState } from "react";
 
 interface ProductGridProps {
   products: IProduct[];
   isLoading: boolean;
   onAddToCart: (product: IProduct) => void;
-  viewMode?: "grid" | "list";
+  viewMode?: "grid" | "list" | "cart";
 }
 
 export default function ProductGrid({
@@ -18,6 +19,14 @@ export default function ProductGrid({
   onAddToCart,
   viewMode = "grid",
 }: ProductGridProps) {
+  const [productViewMode, setProductViewMode] = useState<"grid" | "list">(
+    "grid",
+  );
+
+  useEffect(() => {
+    if (viewMode !== "cart") setProductViewMode(viewMode);
+  }, [viewMode]);
+
   if (isLoading) {
     return (
       <Grid container spacing={2}>
@@ -42,7 +51,7 @@ export default function ProductGrid({
     );
   }
 
-  if (viewMode === "list") {
+  if (productViewMode === "list") {
     return (
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {products.map((product) => (
@@ -55,7 +64,10 @@ export default function ProductGrid({
               cursor: "pointer",
               transition: "all 0.2s",
               "&:hover": { transform: "translateX(4px)", boxShadow: 3 },
-              border: product.quantity === 0 ? "2px solid #EF4444" : "1px solid #E5E7EB",
+              border:
+                product.quantity === 0
+                  ? "2px solid #EF4444"
+                  : "1px solid #E5E7EB",
             }}
             onClick={() => onAddToCart(product)}
           >
@@ -116,7 +128,10 @@ export default function ProductGrid({
               flexDirection: "column",
               justifyContent: "space-between",
               "&:hover": { transform: "translateY(-2px)", boxShadow: 3 },
-              border: product.quantity === 0 ? "2px solid #EF4444" : "1px solid #E5E7EB",
+              border:
+                product.quantity === 0
+                  ? "2px solid #EF4444"
+                  : "1px solid #E5E7EB",
             }}
             onClick={() => onAddToCart(product)}
           >
@@ -134,7 +149,14 @@ export default function ProductGrid({
               <Typography
                 variant="subtitle1"
                 fontWeight="600"
-                sx={{ mb: 0.5, minHeight: 48, display: "-webkit-box", overflow: "hidden", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 }}
+                sx={{
+                  mb: 0.5,
+                  minHeight: 48,
+                  display: "-webkit-box",
+                  overflow: "hidden",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
+                }}
               >
                 {product.name}
               </Typography>

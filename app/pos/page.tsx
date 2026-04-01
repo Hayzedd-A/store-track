@@ -17,6 +17,7 @@ import {
   PointOfSale as POSIcon,
   ViewModule as ViewModuleIcon,
   ViewList as ViewListIcon,
+  ShoppingCart,
 } from "@mui/icons-material";
 import PageHeader from "@/app/components/ui/PageHeader";
 import ProductSearch from "@/app/components/pos/ProductSearch";
@@ -49,7 +50,7 @@ export default function POSPage() {
   } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "cart">("grid");
 
   /** Play a short confirmation beep via the Web Audio API */
   const playBeep = () => {
@@ -147,7 +148,13 @@ export default function POSPage() {
       const existing = prevCart.find((i) => i.product._id === product._id);
       if (existing) {
         if (existing.quantity >= product.quantity) {
-          setTimeout(() => setError(`Only ${product.quantity} ${product.unitConfig.saleUnit} available`), 0);
+          setTimeout(
+            () =>
+              setError(
+                `Only ${product.quantity} ${product.unitConfig.saleUnit} available`,
+              ),
+            0,
+          );
           return prevCart;
         }
         return prevCart.map((i) =>
@@ -220,18 +227,23 @@ export default function POSPage() {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        <Grid minWidth={350} flex={2} size={8}>
+      <ProductSearch
+        searchQuery={searchQuery}
+        selectedCategory={selectedCategory}
+        categories={categories}
+        onSearchChange={setSearchQuery}
+        onCategoryChange={setSelectedCategory}
+        onBarcodeDetected={handleBarcodeDetected}
+      />
+
+      <Grid
+        container
+        direction={viewMode === "cart" ? "column-reverse" : "row"}
+        spacing={3}
+      >
+        <Grid minWidth={350} flex={2}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent sx={{ p: 2 }}>
-              <ProductSearch
-                searchQuery={searchQuery}
-                selectedCategory={selectedCategory}
-                categories={categories}
-                onSearchChange={setSearchQuery}
-                onCategoryChange={setSelectedCategory}
-                onBarcodeDetected={handleBarcodeDetected}
-              />
               <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
                 <ToggleButtonGroup
                   size="small"
@@ -248,6 +260,9 @@ export default function POSPage() {
                   <ToggleButton value="list" aria-label="list view">
                     <ViewListIcon />
                   </ToggleButton>
+                  <ToggleButton value="cart" aria-label="list view">
+                    <ShoppingCart />
+                  </ToggleButton>
                 </ToggleButtonGroup>
               </Box>
               <ProductGrid
@@ -260,7 +275,7 @@ export default function POSPage() {
           </Card>
         </Grid>
 
-        <Grid minWidth={250} flex={1} size={4}>
+        <Grid minWidth={250} flex={1}>
           <Card sx={{ borderRadius: 3, position: "sticky", top: 80 }}>
             <CardContent sx={{ p: 2 }}>
               <CartPanel
