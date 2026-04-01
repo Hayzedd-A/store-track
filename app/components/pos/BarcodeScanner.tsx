@@ -53,32 +53,47 @@ export default function BarcodeScanner({
 
   // Stop scanner and cleanup
   const stopScanner = useCallback(async () => {
+    console.log("Stopping scanner...");
     if (scanTimeoutRef.current) {
       clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
     }
 
+    isScanningRef.current = false;
+
     if (readerRef.current) {
+      const reader = readerRef.current;
+      readerRef.current = null;
       try {
-        await readerRef.current.reset();
-        readerRef.current = null;
+        await reader.reset();
       } catch (error) {
         console.error("Error resetting scanner:", error);
       }
     }
 
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
+    if (videoRef.current) {
+      const video = videoRef.current;
+      if (video.srcObject) {
+        const tracks = (video.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
+        video.srcObject = null;
+      }
+      try {
+        video.pause();
+        video.removeAttribute("src"); // Clear source
+        video.load(); // Reset video element
+      } catch (e) {
+        // Ignore video pause errors
+      }
     }
 
-    isScanningRef.current = false;
     lastScannedCodeRef.current = "";
   }, []);
 
   // Handle successful scan
   const handleSuccessfulScan = useCallback(
     (barcode: string) => {
+      console.log("Success scan:", barcode);
       if (scanTimeoutRef.current) {
         clearTimeout(scanTimeoutRef.current);
       }
@@ -92,26 +107,38 @@ export default function BarcodeScanner({
 
       // Brief pause to show success checkmark, then resume scanning
       setTimeout(() => {
-        setScanStatus("scanning");
-        setLastBarcode(null);
-        isScanningRef.current = false; // Allow next scan
-        lastScannedCodeRef.current = "";
+        // If the scanner was closed during this timeout, don't resume
+        if (readerRef.current) {
+          setScanStatus("scanning");
+          setLastBarcode(null);
+          isScanningRef.current = false; // Allow next scan
+        }
       }, 1000);
 
-      // Allow the same barcode to be scanned again after 1.5 seconds
+      // Allow the same barcode to be scanned again after 2 seconds
+      // Using a longer timeout for the same code to prevent accidental multiple adds
       scanTimeoutRef.current = setTimeout(() => {
-        lastScannedCodeRef.current = "";
-      }, 1500);
+        if (lastScannedCodeRef.current === barcode) {
+          lastScannedCodeRef.current = "";
+        }
+      }, 2000);
     },
     [onBarcodeDetected],
   );
 
   // Start scanner
   const startScanner = useCallback(async () => {
-    if (!videoRef.current || isScanningRef.current) return;
+    if (!videoRef.current) return;
+    
+    // If already initialized OR in process, don't start again
+    if (readerRef.current || scanStatus === "requesting" || scanStatus === "ready") {
+      console.log("Scanner already starting or running, skipping...");
+      return;
+    }
 
     setScanStatus("requesting");
     setErrorMessage(null);
+    isScanningRef.current = false;
 
     // Check browser support
     if (typeof navigator === "undefined" || !navigator.mediaDevices) {
@@ -157,18 +184,18 @@ export default function BarcodeScanner({
             const barcode = result.getText();
 
             // Debounce same barcode within a timeframe
-            if (lastScannedCodeRef.current === barcode) return;
+            if (lastScannedCodeRef.current === barcode) {
+              return;
+            }
 
-            console.log("Barcode detected:", barcode);
             isScanningRef.current = true;
             handleSuccessfulScan(barcode);
           }
 
           if (error && !(error instanceof NotFoundException)) {
-            console.error("Scan error:", error);
-            if (error instanceof Error) {
-              setErrorMessage(error.message);
-              setScanStatus("error");
+            // Only log errors that aren't "nothing found"
+            if (error.name !== "AbortError" && !error.message?.includes("already playing")) {
+               console.error("Scan error:", error);
             }
           }
         },
@@ -177,6 +204,12 @@ export default function BarcodeScanner({
       setScanStatus("scanning");
     } catch (error) {
       console.error("Failed to start scanner:", error);
+      
+      // Clean up if initialization failed
+      if (readerRef.current) {
+        readerRef.current.reset();
+        readerRef.current = null;
+      }
 
       if (error instanceof DOMException) {
         if (
