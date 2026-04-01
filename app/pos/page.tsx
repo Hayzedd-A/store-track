@@ -13,9 +13,9 @@ import {
   ToggleButton,
   ToggleButtonGroup,
 } from "@mui/material";
-import { 
-  PointOfSale as POSIcon, 
-  ViewModule as ViewModuleIcon, 
+import {
+  PointOfSale as POSIcon,
+  ViewModule as ViewModuleIcon,
   ViewList as ViewListIcon,
 } from "@mui/icons-material";
 import PageHeader from "@/app/components/ui/PageHeader";
@@ -25,23 +25,6 @@ import CartPanel from "@/app/components/pos/CartPanel";
 import CheckoutDialog from "@/app/components/pos/CheckoutDialog";
 import ReceiptDialog from "@/app/components/pos/ReceiptDialog";
 import { IProduct } from "@/types";
-
-// interface IProduct {
-//   _id: string;
-//   name: string;
-//   sku: string;
-//   price: number;
-//   cost: number;
-//   quantity: number;
-//   minStock: number;
-//   shelfNo?: string;
-//   unitConfig: {
-//     saleUnit: string;
-//     restockUnit: string;
-//     unitsPerRestock: number;
-//   };
-//   categoryId?: { _id: string; name: string; color: string } | null;
-// }
 
 interface CartItem {
   product: IProduct;
@@ -71,9 +54,11 @@ export default function POSPage() {
   /** Play a short confirmation beep via the Web Audio API */
   const playBeep = () => {
     try {
-      const ctx = new (window.AudioContext ||
+      const ctx = new (
+        window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext)();
+          .webkitAudioContext
+      )();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -143,7 +128,8 @@ export default function POSPage() {
         const matchesSearch =
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
+          (p.barcode &&
+            p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesCategory =
           typeof selectedCategory !== "undefined" &&
           typeof p.categoryId !== "string" &&
@@ -157,16 +143,14 @@ export default function POSPage() {
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const addToCart = (product: IProduct) => {
-    const existing = cart.find((i) => i.product._id === product._id);
-    if (existing) {
-      if (existing.quantity >= product.quantity) {
-        setError(
-          `Only ${product.quantity} ${product.unitConfig.saleUnit} available`,
-        );
-        return;
-      }
-      setCart(
-        cart.map((i) =>
+    setCart((prevCart) => {
+      const existing = prevCart.find((i) => i.product._id === product._id);
+      if (existing) {
+        if (existing.quantity >= product.quantity) {
+          setTimeout(() => setError(`Only ${product.quantity} ${product.unitConfig.saleUnit} available`), 0);
+          return prevCart;
+        }
+        return prevCart.map((i) =>
           i.product._id === product._id
             ? {
                 ...i,
@@ -174,15 +158,15 @@ export default function POSPage() {
                 subtotal: (i.quantity + 1) * product.price,
               }
             : i,
-        ),
-      );
-    } else {
-      if (product.quantity < 1) {
-        setError("Product is out of stock");
-        return;
+        );
+      } else {
+        if (product.quantity < 1) {
+          setTimeout(() => setError("Product is out of stock"), 0);
+          return prevCart;
+        }
+        return [...prevCart, { product, quantity: 1, subtotal: product.price }];
       }
-      setCart([...cart, { product, quantity: 1, subtotal: product.price }]);
-    }
+    });
     setError(null);
   };
 
@@ -190,7 +174,7 @@ export default function POSPage() {
   const handleBarcodeDetected = (barcode: string) => {
     const product = products.find(
       (p: IProduct) =>
-        p.barcode && p.barcode.toLowerCase() === barcode.toLowerCase()
+        p.barcode && p.barcode.toLowerCase() === barcode.toLowerCase(),
     );
     if (!product) {
       setError(`No product found for barcode: ${barcode}`);

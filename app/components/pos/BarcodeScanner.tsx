@@ -76,12 +76,9 @@ export default function BarcodeScanner({
     lastScannedCodeRef.current = "";
   }, []);
 
-  // Handle successful scan with debouncing
+  // Handle successful scan
   const handleSuccessfulScan = useCallback(
     (barcode: string) => {
-      // Debounce: ignore if same code scanned within 500ms
-      if (lastScannedCodeRef.current === barcode) return;
-
       if (scanTimeoutRef.current) {
         clearTimeout(scanTimeoutRef.current);
       }
@@ -93,17 +90,20 @@ export default function BarcodeScanner({
       // Notify parent
       onBarcodeDetected(barcode);
 
-      // Reset after 500ms to allow re-scanning same code
+      // Brief pause to show success checkmark, then resume scanning
+      setTimeout(() => {
+        setScanStatus("scanning");
+        setLastBarcode(null);
+        isScanningRef.current = false; // Allow next scan
+        lastScannedCodeRef.current = "";
+      }, 1000);
+
+      // Allow the same barcode to be scanned again after 1.5 seconds
       scanTimeoutRef.current = setTimeout(() => {
         lastScannedCodeRef.current = "";
-      }, 500);
-
-      // Close dialog after showing success
-      setTimeout(() => {
-        onClose();
       }, 1500);
     },
-    [onBarcodeDetected, onClose],
+    [onBarcodeDetected],
   );
 
   // Start scanner
@@ -155,16 +155,13 @@ export default function BarcodeScanner({
         (result, error) => {
           if (result && !isScanningRef.current) {
             const barcode = result.getText();
-            console.log("Barcode detected:", barcode);
-            handleSuccessfulScan(barcode);
-            isScanningRef.current = true;
 
-            // Stop scanner after successful scan
-            setTimeout(() => {
-              if (readerRef.current) {
-                readerRef.current.reset();
-              }
-            }, 100);
+            // Debounce same barcode within a timeframe
+            if (lastScannedCodeRef.current === barcode) return;
+
+            console.log("Barcode detected:", barcode);
+            isScanningRef.current = true;
+            handleSuccessfulScan(barcode);
           }
 
           if (error && !(error instanceof NotFoundException)) {
