@@ -16,6 +16,9 @@ import {
   IconButton,
 } from "@mui/material";
 import { Visibility, VisibilityOff, Store } from "@mui/icons-material";
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_APP === "true";
+const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL || "";
+const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,6 +37,13 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     setCallbackUrl(params.get("callbackUrl") || "/dashboard");
   }, []);
+
+  useEffect(() => {
+    if (DEMO_MODE) {
+      setEmail(demoEmail);
+      setPassword(demoPassword);
+    }
+  }, [DEMO_MODE]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +174,8 @@ export default function LoginPage() {
             >
               {loading ? (
                 <CircularProgress size={24} color="inherit" />
+              ) : DEMO_MODE ? (
+                "(Demo mode) - Click to Sign In"
               ) : (
                 "Sign In"
               )}

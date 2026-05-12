@@ -66,7 +66,7 @@ export default function DashboardStatCards({
   ];
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={3} marginBottom={4}>
       {cards.map((card, index) => (
         <Grid key={index}>
           <StatCard {...card} isLoading={isLoading} />

@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Grid, Card, Typography, ToggleButton, ToggleButtonGroup, Box } from "@mui/material";
+import {
+  Grid,
+  Card,
+  Typography,
+  ToggleButton,
+  ToggleButtonGroup,
+  Box,
+} from "@mui/material";
 import {
   ResponsiveContainer,
   BarChart,
@@ -48,8 +55,8 @@ export default function SalesCharts({
   const [pieMode, setPieMode] = useState<"revenue" | "quantity">("revenue");
 
   return (
-    <Grid container spacing={3} columns={2} sx={{ mb: 3 }}>
-      <Grid size={1}>
+    <Grid container rowSpacing={3} columnSpacing={3} sx={{ mb: 3 }}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Card sx={{ borderRadius: 3, p: 2, height: "100%" }}>
           <Typography variant="h6" fontWeight="600" sx={{ mb: 2 }}>
             Sales Trend
@@ -62,20 +69,34 @@ export default function SalesCharts({
               <Tooltip
                 formatter={(value, name) => {
                   const safeValue = Number(value ?? 0);
-                  if (name === "profit") return [formatCurrency(safeValue), "Profit"];
-                  if (name === "cost") return [formatCurrency(safeValue), "Cost"];
+                  if (name === "profit")
+                    return [formatCurrency(safeValue), "Profit"];
+                  if (name === "cost")
+                    return [formatCurrency(safeValue), "Cost"];
                   return [safeValue, name];
                 }}
               />
               <Bar dataKey="cost" stackId="a" fill="#F97316" />
-              <Bar dataKey="profit" stackId="a" fill="#10B981" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="profit"
+                stackId="a"
+                fill="#10B981"
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </Card>
       </Grid>
-      <Grid size={1}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Card sx={{ borderRadius: 3, p: 2, height: "100%" }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
             <Typography variant="h6" fontWeight="600">
               Top Products
             </Typography>
@@ -113,10 +134,12 @@ export default function SalesCharts({
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
-                formatter={(value) => 
-                  pieMode === "revenue" ? formatCurrency(Number(value)) : `${Number(value)} sold`
-                } 
+              <Tooltip
+                formatter={(value) =>
+                  pieMode === "revenue"
+                    ? formatCurrency(Number(value))
+                    : `${Number(value)} sold`
+                }
               />
             </PieChart>
           </ResponsiveContainer>
